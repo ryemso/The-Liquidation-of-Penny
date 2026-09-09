@@ -159,7 +159,7 @@ function updateHUD(){const p=game.player;$('hp-fill').style.width=`${p.hp/p.maxH
 function tick(now){const dt=Math.min((now-last)/1000||0,1/30);last=now;game.update(dt,input);stageMusic.update(dt);render();if(game.state!=='title')updateHUD();requestAnimationFrame(tick);}
 async function init(){
  game=new Game({onEvent:event,knowledge:progress.knowledge});bind();updateSaveNote();
- try{const names=['hero','rubble','bomb','ghost','boss','alley','institution','shield','drone','enforcer'];const imgs=await Promise.all(names.map(n=>imageLoad(`./assets/${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=['alley','institution'].includes(n)?imgs[i]:atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}loaded=true;$('start').disabled=false;$('start').textContent='시장에 진입하기 ↗';requestAnimationFrame(tick);}
+ try{const names=['hero','rubble','bomb','ghost','boss','alley','institution','shield','drone','enforcer'];const imgs=await Promise.all(names.map(n=>imageLoad(`./${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=['alley','institution'].includes(n)?imgs[i]:atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}loaded=true;$('start').disabled=false;$('start').textContent='시장에 진입하기 ↗';requestAnimationFrame(tick);}
  catch(err){$('start').textContent='에셋 다시 불러오기';$('start').disabled=false;$('start').onclick=()=>location.reload();$('save-note').textContent='이미지를 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';console.error('Asset load failed:',err);}
 }
 init();
