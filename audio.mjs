@@ -1,7 +1,7 @@
 // One looping track for the early chapters. Playback starts from a user gesture,
 // survives room changes, and pauses with the game or a hidden document.
 export class StageMusic {
- constructor({src='./assets/degraded-signal.mp3',createAudio=url=>new Audio(url),onBlocked=()=>{},onError=()=>{}}={}) {
+ constructor({src='./degraded-signal.mp3',createAudio=url=>new Audio(url),onBlocked=()=>{},onError=()=>{}}={}) {
   this.track=createAudio(src);this.track.loop=true;this.track.preload='metadata';
   this.enabled=true;this.volume=.3;this.scene='title';this.chapter=1;this.visible=true;
   this.playing=false;this.pending=null;this.blocked=false;this.targetVolume=0;
