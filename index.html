@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090e18"><meta name="description" content="The Liquidation of Penny — 금융 액션 로그라이트. 잡주의 골목에서 기관의 벽까지, 두 개의 장을 돌파하세요.">
+  <title>The Liquidation of Penny</title><link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main id="app">
+ <header class="topline"><a class="wordmark" href="./" aria-label="The Liquidation of Penny 시작 화면">The Liquidation <span>of Penny</span></a><div class="top-actions"><span id="chapter-tag" class="chapter-tag">CHAPTER 01 · 잡주의 골목</span><div class="music-controls"><button id="music" class="icon-button" aria-label="배경 음악 끄기" aria-pressed="true">BGM ON</button><input id="music-volume" type="range" min="0" max="100" value="30" aria-label="배경 음악 음량" title="BGM 음량"></div><button id="sound" class="icon-button" aria-label="효과음 켜기" aria-pressed="false">효과음 OFF</button><button id="help" class="icon-button">조작법 <kbd>?</kbd></button><button id="pause" class="icon-button" aria-label="일시 정지">Ⅱ</button></div></header>
+ <section id="stage" aria-label="게임 화면">
+  <canvas id="game" width="1280" height="720" tabindex="0" aria-label="방향키 이동, C 점프, X 공격, Z 대시. 조작법 버튼에서 전체 조작을 확인할 수 있습니다."></canvas>
+  <div id="hud" class="hud hidden"><div class="player-panel"><div class="rank-line"><span id="rank">PENNY STOCK</span><span id="room-number">01 / 05</span></div><div class="health-track"><div id="hp-fill"></div><span id="hp-text">100 / 100</span></div><div class="profit-line"><span>미실현 수익</span><strong id="profit-text">0%</strong></div><div class="profit-track"><div id="profit-fill"></div></div></div><div class="market-panel"><span class="eyebrow">MARKET</span><strong id="market-name">횡보장</strong><small id="market-detail">기본 전투 상태</small><div id="market-warning"></div></div><div class="fund-panel"><span>보유 시드</span><strong><i>◈</i> <b id="gold">0</b></strong><small id="enemy-count"></small></div></div>
+  <div id="boss-hud" class="boss-hud hidden"><div><span id="boss-name">잠식된 선동가</span><span id="boss-phase">PHASE 01</span></div><div class="boss-track"><div id="boss-fill"></div></div></div>
+  <div id="room-toast" class="room-toast hidden"><span id="room-kicker"></span><h2 id="room-title"></h2></div>
+  <div id="leverage" class="leverage hidden"></div><div id="notice" class="notice hidden" role="status" aria-live="polite"></div>
+  <div id="skills" class="skillbar hidden"><button data-action="profit" id="skill-profit"><kbd>A</kbd><span>익절</span><small>수익 25 이상</small></button><button data-action="leverage" id="skill-leverage"><kbd>S</kbd><span>레버리지</span><small>8초 / 피해 ×1.65</small></button><button data-action="circuit" id="skill-circuit"><kbd>D</kbd><span>서킷브레이커</span><small>적 2초 정지</small></button></div>
+  <div id="screen" class="screen"><div class="start-card"><div class="eyebrow"><span class="small-line"></span> FINANCIAL ACTION ROGUELITE</div><h1 class="penny-title" aria-label="The Liquidation of Penny"><span>THE</span>LIQUIDATION<br><em>OF PENNY</em></h1><p class="intro">잃을 것은 없다.<br>이제, 시장의 규칙을 뒤집을 차례.</p><button id="start" class="primary" disabled>에셋 준비 중…</button><button id="start-chapter2" class="chapter-start hidden">해금된 2장부터 시작 →</button><div class="start-meta"><span>1–2장 플레이 데모</span><span>10개 구역 · 보스 2종</span></div><p id="save-note" class="save-note"></p><p class="music-credit">BGM · Degraded Signal</p></div><div class="start-quote"><span>01 잡주의 골목 → 02 기관의 벽</span><p>“시장이 자네를 삼켰다고?<br>그럼 안에서부터 부숴야지.”</p><small>— 공칠, 파산한 전직 매니저</small></div></div>
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-inner" id="modal-inner"></div></div>
+  <div id="touch" class="touch"><div><button data-hold="left" aria-label="왼쪽 이동">◀</button><button data-hold="right" aria-label="오른쪽 이동">▶</button></div><div><button data-action="interact" aria-label="상호작용">↑</button><button data-action="dash">Z</button><button data-action="jump">C</button><button data-action="attack">X</button></div></div>
+ </section>
+ <footer><div class="controls"><span><kbd>←</kbd><kbd>→</kbd> 이동</span><span><kbd>C</kbd> 2단 점프</span><span><kbd>X</kbd> 공격</span><span><kbd>Z</kbd> 대시</span><span><kbd>↑</kbd> 상호작용</span></div><div class="footer-state"><span id="footer-location">폐장 이후, 이름 없는 골목.</span><button id="fullscreen">전체 화면 ⛶</button></div></footer>
+</main><script type="module" src="./game.js"></script>
+</body></html>
