@@ -257,7 +257,7 @@ export class Game{
   }else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.85:1.15;}
   moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,p)&&e.state==='idle')this.hurt(12,e.x,'contact');
  }
- explode(e){e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;this.player.gold+=Math.round(e.gold*(this.market===2?1.35:1));const x=e.x+e.w/2,y=e.y+e.h/2;this.effects.push({type:'explosion',x,y,life:.5,max:.5});this.burst(x,y,'#efb86f',25);this.shake=8;this.emit('sound',{name:'explosion'});if(Math.hypot(this.player.x+15-x,this.player.y+28-y)<135)this.hurt(e.damage,x);for(const other of this.enemies)if(other!==e&&!other.dead&&Math.hypot(other.x+other.w/2-x,other.y+other.h/2-y)<140)this.hitEnemy(other,60,Math.sign(other.x-x),false,true);}
+ explode(e){if(e.dead)return;this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional,cause:'self_explosion'});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;this.player.gold+=Math.round(e.gold*(this.market===2?1.35:1));const x=e.x+e.w/2,y=e.y+e.h/2;this.effects.push({type:'explosion',x,y,life:.5,max:.5});this.burst(x,y,'#efb86f',25);this.shake=8;this.emit('sound',{name:'explosion'});for(const other of this.enemies)if(other!==e&&!other.dead&&Math.hypot(other.x+other.w/2-x,other.y+other.h/2-y)<140)this.hitEnemy(other,60,Math.sign(other.x-x),false,true);if(Math.hypot(this.player.x+15-x,this.player.y+28-y)<135)this.hurt(e.damage,x);}
  updateBoss(e,dt,dx){
   const phase=e.hp<e.maxHp*.5?2:1;e.facing=dx<0?-1:1;e.vx=0;
   if(e.state==='idle'){if(Math.abs(dx)>230)e.vx=e.facing*e.speed;if(e.timer<=0){e.attackNo++;e.pattern=e.attackNo%3;e.state='windup';e.timer=phase===2?.9:1.15;e.lockDirection=e.facing;
