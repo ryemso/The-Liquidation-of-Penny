@@ -1,3 +1,4 @@
+import {RunLog} from './analytics.mjs';
 import {TotemSystem,TOTEMS} from './totems.mjs';
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
@@ -25,7 +26,12 @@ export const ROOM_SPECS=[
  {name:'리스크 관리실',kind:'shop',subtitle:'03 · 위험을 나눠라',width:1280,platforms:[[350,514,200],[780,514,210]],enemies:[]},
  {name:'공매도 구역',kind:'elite',subtitle:'04 · 빌린 힘의 대가',width:2300,pressure:true,platforms:[[330,520,230],[710,414,220],[1080,516,240],[1470,420,240],[1870,514,210]],enemies:[['shield',680,620,true],['drone',990,425],['ghost',1320,435],['shield',1660,620],['drone',1960,430]]},
  {name:'헤지펀드 본사',kind:'boss',bossName:'헤지펀드 집행관',subtitle:'05 · 헤지펀드 집행관',width:1840,platforms:[[270,510,220],[630,414,230],[1020,510,220],[1400,414,210]],enemies:[['enforcer',1320,620]]},
-].map((room,i)=>({...room,chapter:i<5?1:2,chapterName:i<5?'잡주의 골목':'기관의 벽',localRoom:i%5+1}));
+ {name:'데이터 회랑',kind:'combat',subtitle:'01 · 흐름을 추적하라',width:2200,platforms:[[330,520,220],[700,420,240],[1120,515,220],[1600,420,240]],enemies:[['drone',690,425],['shield',1040,620],['drone',1500,435],['ghost',1830,425]]},
+ {name:'지연된 주문실',kind:'combat',subtitle:'02 · 늦게 도착한 신호',width:2400,pressure:true,platforms:[[350,510,240],[760,410,240],[1200,515,230],[1750,420,240]],enemies:[['drone',680,430],['shield',1040,620],['bomb',1280,515],['drone',1650,430],['shield',1990,620]]},
+ {name:'캐시 정거장',kind:'shop',subtitle:'03 · 잠시 연결을 끊다',width:1280,platforms:[[350,514,200],[780,514,210]],enemies:[]},
+ {name:'고빈도 매매 구역',kind:'elite',subtitle:'04 · 밀리초의 전쟁',width:2450,pressure:true,platforms:[[360,520,240],[800,420,240],[1280,515,230],[1830,420,240]],enemies:[['drone',670,430,true],['shield',1010,620],['ghost',1380,435],['drone',1740,430,true]]},
+ {name:'알고리즘 코어',kind:'boss',bossName:'알고리즘 트레이더',subtitle:'05 · 예측을 벗어나라',width:1920,platforms:[[260,510,220],[650,414,230],[1050,510,230],[1450,414,230]],enemies:[['algorithm',1430,620]]},
+].map((room,i)=>({...room,chapter:Math.floor(i/5)+1,chapterName:['잡주의 골목','기관의 벽','알고리즘의 심장'][Math.floor(i/5)],localRoom:i%5+1}));
 // Semi-solid ledges permit jumping from below. Swept foot crossing prevents tunneling.
 export function moveBody(body,dt,platforms,width){
  const oldBottom=body.y+body.h;
@@ -41,20 +47,20 @@ export function moveBody(body,dt,platforms,width){
 }
 export class Game{
  constructor({random=Math.random,onEvent=()=>{},knowledge=0}={}){
-  this.random=random;this.onEvent=onEvent;this.knowledge=knowledge;this.state='title';this.enemies=[];this.projectiles=[];this.hazards=[];this.particles=[];this.texts=[];this.effects=[];this.room=0;this.t=0;this.camera=0;this.shake=0;this.market=0;this.marketClock=0;this.freeze=0;this.hitstop=0;this.totalTime=0;this.kills=0;this.spent=0;this.build=[];this.clearedRooms=0;this.promoted=false;this.rank='PENNY STOCK';this.stats={atk:18,speed:255,crit:.05,armor:0,dividend:0,profitHeal:0,profitGain:0,short:0,circuitExtra:0,circuitReduce:0,dashFactor:1,guardPierce:0,circuitHeal:0};this.player=this.newPlayer();this.totems=new TotemSystem(this);this.setRoom(0,false);
+  this.random=random;this.onEvent=onEvent;this.knowledge=knowledge;this.state='title';this.enemies=[];this.projectiles=[];this.hazards=[];this.particles=[];this.texts=[];this.effects=[];this.room=0;this.t=0;this.camera=0;this.shake=0;this.market=0;this.marketClock=0;this.freeze=0;this.hitstop=0;this.totalTime=0;this.kills=0;this.spent=0;this.build=[];this.clearedRooms=0;this.promoted=false;this.rank='PENNY STOCK';this.stats={atk:18,speed:255,crit:.05,armor:0,dividend:0,profitHeal:0,profitGain:0,short:0,circuitExtra:0,circuitReduce:0,dashFactor:1,guardPierce:0,circuitHeal:0};this.player=this.newPlayer();this.totems=new TotemSystem(this);this.setRoom(0,false);this.log=new RunLog(this);
  }
- newPlayer(){const hp=100+Math.min(20,this.knowledge*2);return{x:120,y:540,w:30,h:56,vx:0,vy:0,grounded:false,facing:1,hp,maxHp:hp,inv:0,jumps:0,coyote:0,jumpBuffer:0,attack:0,attackCD:0,combo:0,comboClock:0,dash:0,dashCD:0,profit:0,profitCD:0,leverageCD:0,circuitCD:0,hurt:0,gold:30,leverage:0,leverageDamage:0,leverageKills:0};}
+ newPlayer(){const hp=100+Math.min(20,this.knowledge*2);return{x:120,y:540,w:30,h:56,vx:0,vy:0,grounded:false,facing:1,hp,maxHp:hp,inv:0,jumps:0,coyote:0,jumpBuffer:0,attack:0,attackCD:0,combo:0,comboClock:0,dash:0,dodgeWindow:0,dashCD:0,profit:0,profitCD:0,leverageCD:0,circuitCD:0,hurt:0,gold:30,leverage:0,leverageDamage:0,leverageKills:0};}
  emit(type,data={}){this.onEvent({type,...data});}
- start(){this.state='playing';this.emit('room',{room:this.spec});this.emit('notice',{text:'← → 이동 · C 2단 점프 · X 공격 · Z 대시',duration:7});}
+ start(){this.state='playing';this.log.start();this.emit('room',{room:this.spec});this.emit('notice',{text:'← → 이동 · C 2단 점프 · X 공격 · Z 대시',duration:7});}
  setRoom(index,announce=true){
   if(!ROOM_SPECS[index])return;
-  this.totems.roomChanged();this.room=index;this.spec=ROOM_SPECS[index];this.width=this.spec.width;this.platforms=[{x:0,y:620,w:this.width,h:100,ground:true},...this.spec.platforms.map(([x,y,w])=>({x,y,w,h:18}))];
-  this.marketPeriod=this.spec.chapter===2?20:24;this.marketClock=Math.min(this.marketClock,this.marketPeriod-4);this.pressureClock=0;
+  if(this.log?.started&&this.spec.kind==='shop'&&!this.rewardGiven){this.rewardGiven=true;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});}if(this.log?.started)this.log.add('stage_exit',{duration:this.totalTime-this.log.stageAt,cleared:this.rewardGiven||this.spec.kind==='shop'});this.totems.roomChanged();this.room=index;this.spec=ROOM_SPECS[index];this.width=this.spec.width;this.platforms=[{x:0,y:620,w:this.width,h:100,ground:true},...this.spec.platforms.map(([x,y,w])=>({x,y,w,h:18}))];
+  this.marketPeriod=[24,20,18][this.spec.chapter-1];this.marketClock=Math.min(this.marketClock,this.marketPeriod-4);this.pressureClock=0;
   this.enemies=this.spec.enemies.map(([type,x,bottom,elite])=>this.makeEnemy(type,x,bottom,elite));this.projectiles=[];this.hazards=[];this.effects=[];this.particles=[];this.texts=[];this.doorOpen=this.spec.kind==='shop';this.rewardGiven=false;this.clearTimer=-1;this.camera=0;this.freeze=0;this.hitstop=0;this.shopVisited=false;
-  Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,attack:0,grounded:false,jumpBuffer:0});
-  const relicRooms={0:0,1:1,3:2,5:3,6:4,8:0};const ri=relicRooms[index];
+  Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,dodgeWindow:0,attack:0,grounded:false,jumpBuffer:0});
+  const relicRooms={0:0,1:1,3:2,5:3,6:4,8:0,10:5,11:8,13:15};const ri=relicRooms[index];
   const ledge=this.platforms.filter(p=>!p.ground).at(-1);
-  this.relic=null;
+  this.relic=null;this.trialEnemy=null;
   if(ri!==undefined&&ledge){
    // Optional upper branch: two short jumps; main floor and exit remain accessible.
    const upper={x:ledge.x-65,y:ledge.y-96,w:140,h:18};
@@ -64,26 +70,28 @@ export class Game{
    const offers=[];if(available.includes(preferred))offers.push(preferred);
    const pool=available.filter(id=>id!==preferred);
    while(offers.length<2&&pool.length){const j=Math.floor(this.random()*pool.length);offers.push(pool.splice(j,1)[0]);}
-   this.relic={id:offers[0]||preferred,offers,x:summit.x+summit.w/2,y:summit.y-25,taken:false,seen:false};
+   this.relic={id:offers[0]||preferred,offers,x:summit.x+summit.w/2,y:summit.y-25,taken:false,seen:false,hidden:[1,6,11].includes(index),trial:[3,8,13].includes(index),trialStarted:false,trialComplete:false};
   }
   if(this.player.leverage>0)this.settleLeverage();
+  if(this.log?.started)this.log.stageStart();
   if(announce){this.emit('room',{room:this.spec});if(this.spec.kind==='shop')this.emit('notice',{text:`${this.spec.name} · 중앙 교환소 앞에서 ↑`,duration:5});if(this.spec.kind==='boss')this.emit('notice',{text:this.spec.chapter===1?'“내 말만 믿어. 손실은 언제나 네 몫이지.”':'“네 가치는 담보로도 부족하다. 청산을 집행한다.”',duration:5});if(index===5)this.emit('notice',{text:'방패는 뒤에서 공격하거나 익절로 관통하세요. 드론의 조준선은 발사 전에 고정됩니다.',duration:7});if(this.spec.pressure)this.emit('notice',{text:'공매도 경보 · 표시된 바닥 밖으로 이동하거나 발판으로 피하세요.',duration:6});}
  }
  enterChapterTwo(){if(this.state!=='chapter'||this.room!==4||this.promoted)return;this.promoted=true;this.rank='SMALL CAP';this.player.maxHp+=20;this.heal(45);this.stats.atk+=6;this.player.profit=50;for(const key of ['profitCD','leverageCD','circuitCD','dashCD'])this.player[key]=0;this.market=0;this.marketClock=0;this.state='playing';this.emit('resume');this.setRoom(5);this.emit('sound',{name:'reward'});}
+ enterNextChapter(){if(this.room===4){this.enterChapterTwo();return;}if(this.room!==9||this.state!=='chapter')return;this.rank='MID CAP';this.player.maxHp+=20;this.heal(45);this.stats.atk+=6;this.player.profit=50;this.state='playing';this.emit('resume');this.setRoom(10);}
  makeEnemy(type,x,bottom,elite=false){
-  const data={rubble:{w:60,h:46,hp:52,speed:67,damage:12,gold:20},bomb:{w:50,h:50,hp:44,speed:45,damage:22,gold:24},ghost:{w:42,h:60,hp:46,speed:47,damage:10,gold:26,flying:true},boss:{w:110,h:138,hp:940,speed:55,damage:17,gold:170,boss:true},shield:{w:64,h:62,hp:105,speed:54,damage:17,gold:34,armored:true},drone:{w:48,h:42,hp:70,speed:65,damage:13,gold:32,flying:true},enforcer:{w:148,h:138,hp:1500,speed:53,damage:22,gold:250,boss:true,armored:true}}[type];
-  const e={...data,type,x,y:bottom-data.h,vx:0,vy:0,facing:-1,grounded:!data.flying,elite,inv:0,flash:0,state:'idle',timer:.6+this.random(),anim:0,spawnX:x,spawnY:bottom-data.h,attackNo:0,activated:false,dead:false};if(elite){e.hp*=2;e.damage*=1.25;e.gold*=2;e.w*=1.15;e.h*=1.15;e.y=bottom-e.h;}e.maxHp=e.hp;return e;
+  const data={algorithm:{w:110,h:110,hp:1850,speed:65,damage:20,gold:320,boss:true},rubble:{w:60,h:46,hp:52,speed:67,damage:12,gold:20},bomb:{w:50,h:50,hp:44,speed:45,damage:22,gold:24},ghost:{w:42,h:60,hp:46,speed:47,damage:10,gold:26,flying:true},boss:{w:110,h:138,hp:940,speed:55,damage:17,gold:170,boss:true},shield:{w:64,h:62,hp:105,speed:54,damage:17,gold:34,armored:true},drone:{w:48,h:42,hp:70,speed:65,damage:13,gold:32,flying:true},enforcer:{w:148,h:138,hp:1500,speed:53,damage:22,gold:250,boss:true,armored:true}}[type];
+  const e={id:++this.enemySerial|| (this.enemySerial=1),...data,type,x,y:bottom-data.h,vx:0,vy:0,facing:-1,grounded:!data.flying,elite,inv:0,flash:0,state:'idle',timer:.6+this.random(),anim:0,spawnX:x,spawnY:bottom-data.h,attackNo:0,activated:false,dead:false};if(elite){e.hp*=2;e.damage*=1.25;e.gold*=2;e.w*=1.15;e.h*=1.15;e.y=bottom-e.h;}e.maxHp=e.hp;return e;
  }
  action(name){
   if(this.state!=='playing')return;
   const p=this.player;
   if(name==='jump')p.jumpBuffer=.14;
   if(name==='attack')this.attack();
-  if(name==='dash'&&p.dashCD<=0){p.evadeCounted=false;p.dash=.19;this.totems.signal('dash');p.dashCD=.88*this.stats.dashFactor;p.inv=Math.max(p.inv,.23);p.vy=0;this.emit('sound',{name:'dash'});this.effects.push({type:'dash',x:p.x,y:p.y,facing:p.facing,life:.22,max:.22});}
+  if(name==='dash'&&p.dashCD<=0){p.evadeCounted=false;p.dodgeWindow=.23;p.dash=.19;this.totems.signal('dash');p.dashCD=.88*this.stats.dashFactor;p.inv=Math.max(p.inv,.23);p.vy=0;this.emit('sound',{name:'dash'});this.effects.push({type:'dash',x:p.x,y:p.y,facing:p.facing,life:.22,max:.22});}
   if(name==='profit'){
    if(p.profitCD>0)return;
    if(p.profit<25){this.emit('notice',{text:'공격을 적중시켜 미실현 수익을 25 이상 모으세요.',duration:2});return;}
-   const saved=p.profit;p.profit=0;p.profitCD=5;p.inv=Math.max(p.inv,.35);this.swing(185,this.damage()*(1+saved/30)*(1+this.stats.short*.2),true);this.heal(this.stats.profitHeal);this.effects.push({type:'profit',x:p.x+p.w/2,y:p.y+p.h/2,facing:p.facing,life:.45,max:.45});this.shake=8;this.emit('sound',{name:'profit'});this.emit('notice',{text:`익절! 수익 ${Math.floor(saved)}% 확정`,duration:1.8});
+   this.log.add('attack',{skill:'profit'});const saved=p.profit;p.profit=0;p.profitCD=5;p.inv=Math.max(p.inv,.35);this.swing(185,this.damage()*(1+saved/30)*(1+this.stats.short*.2),true);this.heal(this.stats.profitHeal);this.effects.push({type:'profit',x:p.x+p.w/2,y:p.y+p.h/2,facing:p.facing,life:.45,max:.45});this.shake=8;this.emit('sound',{name:'profit'});this.emit('notice',{text:`익절! 수익 ${Math.floor(saved)}% 확정`,duration:1.8});
   }
   if(name==='leverage'&&p.leverageCD<=0){p.leverage=8;p.leverageCD=24;p.leverageDamage=0;p.leverageKills=0;this.emit('sound',{name:'lever'});this.emit('notice',{text:'8초 안에 2마리 처치 또는 피해 160! 실패 시 체력 −18 (최소 1)',duration:4});}
   if(name==='circuit'&&p.circuitCD<=0){this.totems.signal('circuit');this.freeze=2+this.stats.circuitExtra;p.circuitCD=Math.max(8,18-this.stats.circuitReduce);this.heal(this.stats.circuitHeal);this.emit('sound',{name:'circuit'});this.emit('notice',{text:'TRADING HALT · 적과 투사체 정지',duration:2});}
@@ -92,19 +100,26 @@ export class Game{
    if(p.x>this.width-180){
     if(!this.doorOpen){this.emit('notice',{text:'남은 적을 모두 처치하면 출구가 열립니다.',duration:2});return;}
     if(this.room===ROOM_SPECS.length-1){this.finish(true);return;}
-    if(this.room===4){this.state='chapter';this.emit('chapter');return;}
+    if(this.room===4||this.room===9){this.state='chapter';this.emit('chapter');return;}
     this.setRoom(this.room+1);
    }
   }
  }
  checkRelicPickup(){
   const r=this.relic;if(!r||r.taken||this.state!=='playing')return false;
+  if(r.hidden&&!r.revealed)return false;
+  if(r.trialStarted&&!r.trialComplete)return false;
   const touching=overlap(this.player,{x:r.x-12,y:r.y+7,w:24,h:18});
   if(!touching){r.waitForExit=false;return false;}
   if(r.waitForExit)return false;
+  if(r.trial&&!r.trialComplete){r.waitForExit=true;this.state='trial_choice';this.emit('trial_choice');return true;}
   r.waitForExit=true;this.state='relic_choice';
   this.totems.log('totem_offer_shown',null,{offers:[...r.offers]});
   this.emit('relic_choice',{offers:r.offers});return true;
+ }
+ chooseTrial(accept){if(this.state!=='trial_choice')return;this.state='playing';this.emit('resume');const r=this.relic;
+  if(!accept){this.log.add('elite_trial_declined');return;}
+  r.trialStarted=true;const e=this.makeEnemy('drone',r.x-24,r.y-45,true);e.optional=true;e.activated=true;this.enemies.push(e);this.trialEnemy=e;this.log.add('elite_trial_started');
  }
  chooseRelic(id){
   if(this.state!=='relic_choice'||!this.relic||this.relic.taken)return false;
@@ -114,10 +129,11 @@ export class Game{
   this.relic.taken=true;this.totems.log('totem_reward_selected',id,{offers:[...this.relic.offers]});this.state='totems';this.emit('totems',{acquired:id});return true;
  }
  damage(){return this.stats.atk*(this.market===1?1.15:1)*(this.market===2?1+this.stats.short*.3:1)*(this.player.leverage>0?1.65:1);}
- attack(){const p=this.player;if(p.attackCD>0||p.dash>0)return;p.combo=p.comboClock>0?(p.combo+1)%3:0;p.comboClock=.9;p.attack=.23;p.attackCD=p.combo===2?.4:.27;const range=p.combo===2?110:85;this.swing(range,this.damage()*(p.combo===2?1.4:1),false);this.effects.push({type:'slash',x:p.x+p.w/2,y:p.y+p.h*.5,facing:p.facing,life:.22,max:.22,combo:p.combo});this.emit('sound',{name:'swing'});}
+ attack(){const p=this.player;if(p.attackCD>0||p.dash>0)return;this.log.add('attack',{skill:'basic'});p.combo=p.comboClock>0?(p.combo+1)%3:0;p.comboClock=.9;p.attack=.23;p.attackCD=p.combo===2?.4:.27;const range=p.combo===2?110:85;this.swing(range,this.damage()*(p.combo===2?1.4:1),false);this.effects.push({type:'slash',x:p.x+p.w/2,y:p.y+p.h*.5,facing:p.facing,life:.22,max:.22,combo:p.combo});this.emit('sound',{name:'swing'});}
  swing(range,damage,profit){
   const p=this.player,hit={x:p.facing===1?p.x+p.w-6:p.x-range+6,y:p.y-20,w:range,h:p.h+40};let count=0;let firstTarget=null;
   for(const e of this.enemies){if(e.dead||!overlap(hit,e))continue;firstTarget??=e;if(profit)this.totems.signal('profit',e);const crit=this.random()<this.stats.crit;this.hitEnemy(e,damage*(crit?2:1),p.facing,crit,profit);count++;if(!profit&&p.combo===2)this.totems.signal('finisher',e);if(!profit)p.profit=clamp(p.profit+8+this.stats.profitGain,0,100);}
+  if(count)this.log.add('attack_hit',{skill:profit?'profit':'basic',targets:count});
   if(count&&!profit)this.totems.signal('hit',firstTarget);
   if(count){this.hitstop=.045;this.shake=profit?8:3;this.emit('sound',{name:'hit'});}else if(!profit)this.effects.push({type:'miss',x:p.x,y:p.y,life:.01,max:.01});
  }
@@ -129,31 +145,35 @@ export class Game{
   this.floatText(e.x+e.w/2,e.y-12,String(Math.round(amount)),crit?'#fbd88e':'#edf0e8',crit?22:16);
   this.burst(e.x+e.w/2,e.y+e.h*.5,crit?'#ffd47e':'#d4dce3',7);
   if(this.player.leverage>0)this.player.leverageDamage+=dealt;
-  if(e.hp<=0){e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;const gold=Math.round(e.gold*(this.market===2?1.35:1));this.player.gold+=gold;this.floatText(e.x,e.y-40,`+${gold} 시드`,'#f0c875',13);this.burst(e.x+e.w/2,e.y+e.h/2,'#dcb96d',18);if(e.boss){this.shake=13;this.projectiles=[];this.hazards=[];this.emit('sound',{name:'bossdown'});}}
+  if(e.hp<=0){this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;const gold=Math.round(e.gold*(this.market===2?1.35:1));this.player.gold+=gold;this.floatText(e.x,e.y-40,`+${gold} 시드`,'#f0c875',13);this.burst(e.x+e.w/2,e.y+e.h/2,'#dcb96d',18);if(e.boss){this.shake=13;this.projectiles=[];this.hazards=[];this.emit('sound',{name:'bossdown'});}}
  }
- hurt(amount,sourceX){
-  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(p.dash>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
+ hurt(amount,sourceX,kind='attack'){
+  if(this.enemies.some(e=>e.x===sourceX&&e.attackWeak>0))amount*=.75;
+  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind==='attack'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX});p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
  }
  heal(amount){if(amount<=0)return;const p=this.player,actual=Math.min(p.maxHp-p.hp,amount);p.hp+=actual;if(actual>0)this.floatText(p.x,p.y-20,`+${actual} HP`,'#88d4ac',15);}
  settleLeverage(){const p=this.player;const ok=p.leverageDamage>=160||p.leverageKills>=2;p.leverage=0;if(ok){p.gold+=18;this.emit('notice',{text:'상환 성공 · 추가 시드 +18',duration:3});this.emit('sound',{name:'reward'});}else{p.hp=Math.max(1,p.hp-18);this.floatText(p.x,p.y-20,'상환 −18 HP','#ff9b7a',16);this.emit('notice',{text:'레버리지 상환 · 체력 −18',duration:3});}}
- chooseReward(id){if(this.state!=='reward')return;this.applyCard(id);this.state='playing';this.doorOpen=true;this.emit('resume');this.emit('notice',{text:'포트폴리오 편입 완료 · 오른쪽 출구에서 ↑',duration:4});}
+ chooseReward(id){if(this.state!=='reward'||!this.currentOffers?.includes(id))return;this.log.add('reward_selected',{reward_id:id,offers:this.currentOffers});this.applyCard(id);this.state='playing';this.doorOpen=true;this.emit('resume');this.emit('notice',{text:'포트폴리오 편입 완료 · 오른쪽 출구에서 ↑',duration:4});}
  applyCard(id){const card=CARDS.find(c=>c.id===id);if(!card)return;this.build.push(id);const s=this.stats,p=this.player;
   if(id==='growth'){s.atk+=5;s.profitGain+=1;}if(id==='dividend'){s.dividend+=12;this.heal(12);}if(id==='value'){p.maxHp+=20;this.heal(20);s.armor+=.08;}if(id==='meme')s.crit=Math.min(.85,s.crit+.2);if(id==='liquidity'){s.speed*=1.12;s.dashFactor*=.8;}if(id==='short')s.short++;if(id==='circuit'){s.circuitExtra++;s.circuitReduce+=3;}if(id==='profit'){s.profitHeal+=8;s.profitGain+=4;}if(id==='breakout'){s.guardPierce=Math.min(.7,s.guardPierce+.35);s.atk+=3;}if(id==='hedge'){s.circuitHeal+=10;s.armor+=.05;}this.emit('sound',{name:'reward'});
  }
  buy(id){if(this.state!=='shop')return false;const card=CARDS.find(c=>c.id===id);const cost=id==='heal'?35:card?.price;if(cost==null||this.player.gold<cost)return false;if(id==='heal'&&this.player.hp>=this.player.maxHp)return false;this.player.gold-=cost;this.spent+=cost;if(id==='heal')this.heal(40);else this.applyCard(id);return true;}
  closeShop(){if(this.state==='shop'){this.state='playing';this.shopVisited=true;this.emit('resume');this.emit('notice',{text:this.spec.chapter===1?'“다음 거래소에는 큰놈이 기다리고 있네.” · 오른쪽 출구 ↑':'“방패 뒤의 틈을 보게. 정면만 고집하지 말고.” · 오른쪽 출구 ↑',duration:4});}}
  rewardOptions(){const pool=CARDS.filter(c=>(c.chapter||1)<=this.spec.chapter);for(let i=pool.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}return pool.slice(0,3);}
- finish(won){if(['dead','victory'].includes(this.state))return;this.state=won?'victory':'dead';if(won)this.rank='MID CAP';this.emit('finish',{won,knowledge:Math.max(1,this.clearedRooms)+(won?5:0)});}
+ finish(won){if(['dead','victory'].includes(this.state))return;this.log.add(won?'run_victory':'player_death',{x:this.player.x,y:this.player.y});this.log.end(won?'victory':'death');this.state=won?'victory':'dead';if(won)this.rank='BLUE CHIP';this.emit('finish',{won,knowledge:Math.max(1,this.clearedRooms)+(won?5:0)});}
  burst(x,y,color,n){for(let i=0;i<n;i++)this.particles.push({x,y,vx:(this.random()-.5)*240,vy:-40-this.random()*180,life:.25+this.random()*.4,max:.7,color,size:2+Math.floor(this.random()*3)});}
  floatText(x,y,text,color,size){this.texts.push({x,y,text,color,size,life:1,max:1});}
  update(dt,input={}){
   dt=clamp(dt,0,1/30);this.t+=dt;
   if(this.state!=='playing')return;
   this.totalTime+=dt;this.totems.update(dt,input);
+  if(this.relic?.hidden&&!this.relic.revealed&&Math.hypot(this.player.x-this.relic.x,this.player.y-this.relic.y)<180){this.relic.revealed=true;this.log.add('secret_found');this.emit('notice',{text:'숨겨진 보관함 발견',duration:2});}
+  if(this.trialEnemy?.dead&&this.relic?.trialStarted&&!this.relic.trialComplete){this.relic.trialComplete=true;this.relic.waitForExit=false;this.player.gold+=25;const extra=TOTEMS.find(t=>!this.totems.owned.includes(t.id)&&!this.relic.offers.includes(t.id));if(extra)this.relic.offers.push(extra.id);this.log.add('elite_trial_clear',{offers:this.relic.offers});this.emit('notice',{text:'선택 도전 완료 · 시드 +25 · 선택지 추가 · 상자를 회수하세요',duration:3});}
+
   if(this.relic&&!this.relic.seen&&Math.abs(this.player.x-this.relic.x)<700){this.relic.seen=true;this.totems.log('totem_discovered',this.relic.id,{offers:[...this.relic.offers]});}
   if(this.hitstop>0){this.hitstop-=dt;return;}
   const p=this.player;
-  for(const k of ['inv','hurt','attack','attackCD','comboClock','dashCD','profitCD','leverageCD','circuitCD','jumpBuffer'])p[k]=Math.max(0,p[k]-dt);
+  for(const k of ['dodgeWindow','inv','hurt','attack','attackCD','comboClock','dashCD','profitCD','leverageCD','circuitCD','jumpBuffer'])p[k]=Math.max(0,p[k]-dt);
   if(p.leverage>0){p.leverage-=dt;if(p.leverage<=0)this.settleLeverage();}
   if(this.freeze>0)this.freeze=Math.max(0,this.freeze-dt);
   else if(this.spec.kind!=='shop'){this.marketClock+=dt;if(this.marketClock>=this.marketPeriod){this.marketClock-=this.marketPeriod;this.market=(this.market+1)%3;this.emit('market');}}
@@ -174,15 +194,16 @@ export class Game{
   for(const v of this.particles){v.life-=dt;v.x+=v.vx*dt;v.y+=v.vy*dt;v.vy+=500*dt;}this.particles=this.particles.filter(v=>v.life>0);
   for(const v of this.texts){v.life-=dt;v.y-=32*dt;}this.texts=this.texts.filter(v=>v.life>0);
   if(this.state!=='playing')return;
-  if(this.spec.kind!=='shop'&&!this.enemies.some(e=>!e.dead)&&!this.rewardGiven){
+  if(this.spec.kind!=='shop'&&!this.enemies.some(e=>!e.dead&&!e.optional)&&!this.rewardGiven){
    if(this.clearTimer<0){this.clearTimer=.85;this.projectiles=[];this.hazards=[];this.heal(this.stats.dividend);this.emit('sound',{name:'clear'});}
    this.clearTimer-=dt;
-   if(this.clearTimer<=0){this.rewardGiven=true;this.clearedRooms++;if(p.leverage>0)this.settleLeverage();if(this.spec.kind==='boss'){this.doorOpen=true;this.heal(25);this.emit('notice',{text:this.spec.chapter===1?'선동가 격파 · 오른쪽 출구에서 2장 진입 ↑':'집행관 격파 · 기관의 벽이 무너졌습니다. 오른쪽 출구 ↑',duration:7});}else{this.state='reward';this.emit('reward',{cards:this.rewardOptions()});}}
+   if(this.clearTimer<=0){this.rewardGiven=true;this.clearedRooms++;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});if(p.leverage>0)this.settleLeverage();if(this.spec.kind==='boss'){this.doorOpen=true;this.heal(25);this.emit('notice',{text:this.spec.chapter===1?'선동가 격파 · 오른쪽 출구에서 2장 진입 ↑':'집행관 격파 · 기관의 벽이 무너졌습니다. 오른쪽 출구 ↑',duration:7});}else{this.state='reward';const cards=this.rewardOptions();this.currentOffers=cards.map(c=>c.id);this.log.add('reward_presented',{offers:this.currentOffers});this.emit('reward',{cards});}}
   }
  }
  updateEnemy(e,dt){
   const p=this.player;e.anim+=dt;e.timer-=dt;const dx=p.x+p.w/2-(e.x+e.w/2),dy=(p.y+p.h/2)-(e.y+e.h/2),dist=Math.abs(dx);
-  if(!e.activated){if(dist<610)e.activated=true;else return;}
+  if(!e.activated){if(dist<610){e.activated=true;this.log.add('enemy_encounter',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});}else return;}
+  if(e.type==='algorithm'){this.updateAlgorithm(e,dt,dx);return;}
   if(e.type==='boss'){this.updateBoss(e,dt,dx);return;}
   if(e.type==='enforcer'){this.updateEnforcer(e,dt,dx);return;}
   if(e.type==='shield'){this.updateShield(e,dt,dx,dy);return;}
@@ -191,7 +212,7 @@ export class Game{
    if(e.state==='idle'){e.facing=dx<0?-1:1;e.x=clamp(e.x+Math.sign(dx)*(dist>230?e.speed:dist<135?-e.speed:0)*dt,10,this.width-e.w-10);const wanted=clamp(p.y-55,280,505);e.y+=(wanted-e.y)*dt*.9;e.y+=Math.sin(e.anim*3)*dt*10;if(e.timer<=0&&dist<530){e.state='windup';e.timer=.65;}}
    else if(e.state==='windup'&&e.timer<=0){const len=Math.hypot(dx,dy)||1;this.projectiles.push({x:e.x+e.w/2,y:e.y+e.h*.4,vx:dx/len*225,vy:dy/len*225,r:7,damage:e.damage,life:5,color:'#80c9ed'});e.state='recover';e.timer=.55;this.emit('sound',{name:'shot'});}
    else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=1.7;}
-   if(overlap(p,e))this.hurt(e.damage,e.x);return;
+   if(overlap(p,e))this.hurt(e.damage,e.x,'contact');return;
   }
   e.vx=0;
   if(e.state==='idle'){e.facing=dx<0?-1:1;if(dist>75)e.vx=e.facing*e.speed;if(dist<(e.type==='bomb'?145:115)&&Math.abs(dy)<85&&e.timer<=0){e.state='windup';e.timer=e.type==='bomb'?1.15:.6;e.lockDirection=e.facing;}}
@@ -201,7 +222,7 @@ export class Game{
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.75;}
   if(e.type==='bomb'&&e.state==='idle'&&Math.abs(dy)>95)e.vx=0;
   moveBody(e,dt,this.platforms,this.width);
-  if(overlap(p,e)&&e.state!=='windup')this.hurt(e.damage*.7,e.x);
+  if(overlap(p,e)&&e.state!=='windup')this.hurt(e.damage*.7,e.x,'contact');
  }
  updateShield(e,dt,dx,dy){
   e.vx=0;
@@ -209,14 +230,14 @@ export class Game{
   else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=.34;this.emit('sound',{name:'dash'});}
   else if(e.state==='attack'){e.vx=e.lockDirection*340;if(overlap({...e,x:e.x-8,w:e.w+16},this.player))this.hurt(e.damage,e.x);if(e.timer<=0){e.state='recover';e.timer=1.15;}}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.9;}
-  moveBody(e,dt,this.platforms,this.width);if(overlap(e,this.player)&&e.state==='idle')this.hurt(9,e.x);
+  moveBody(e,dt,this.platforms,this.width);if(overlap(e,this.player)&&e.state==='idle')this.hurt(9,e.x,'contact');
  }
  updateDrone(e,dt,dx){
   const p=this.player;
   if(e.state==='idle'){e.facing=dx<0?-1:1;const dist=Math.abs(dx);e.vx=Math.sign(dx)*(dist>260?e.speed:dist<165?-e.speed:0);e.x=clamp(e.x+e.vx*dt,15,this.width-e.w-15);e.y+=(clamp(p.y-95,340,490)-e.y)*dt*.8;e.y+=Math.sin(e.anim*4)*dt*12;if(e.timer<=0&&dist<580){e.state='windup';e.timer=.85;e.aimX=clamp(p.x+15+p.vx*.3,10,this.width-10);e.aimY=p.y+28;}}
   else if(e.state==='windup'&&e.timer<=0){const x=e.x+e.w/2,y=e.y+e.h/2,angle=Math.atan2(e.aimY-y,e.aimX-x);for(const offset of [-.08,.08])this.projectiles.push({x,y,vx:Math.cos(angle+offset)*270,vy:Math.sin(angle+offset)*270,r:6,damage:e.damage,life:5,color:'#75d9de'});e.state='recover';e.timer=.55;this.emit('sound',{name:'shot'});}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=1.6;}
-  if(overlap(e,p))this.hurt(8,e.x);
+  if(overlap(e,p))this.hurt(8,e.x,'contact');
  }
  fireEnforcer(e,phase){const x=e.x+e.w/2,y=e.y+44,angle=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-2;i<=2;i++)this.projectiles.push({x,y,vx:Math.cos(angle+i*.15)*(phase===2?290:255),vy:Math.sin(angle+i*.15)*(phase===2?290:255),r:8,damage:16,life:5,color:'#84dae2'});this.emit('sound',{name:'roar'});}
  updateEnforcer(e,dt,dx){
@@ -234,7 +255,7 @@ export class Game{
    if(e.secondVolley&&e.timer<.48){e.secondVolley=false;this.fireEnforcer(e,phase);}
    if(e.timer<=0){e.state='recover';e.timer=phase===2?1.05:1.5;this.floatText(e.x+e.w/2,e.y-18,'방패 개방','#e5d49c',13);}
   }else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.85:1.15;}
-  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,p)&&e.state==='idle')this.hurt(12,e.x);
+  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,p)&&e.state==='idle')this.hurt(12,e.x,'contact');
  }
  explode(e){e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;this.player.gold+=Math.round(e.gold*(this.market===2?1.35:1));const x=e.x+e.w/2,y=e.y+e.h/2;this.effects.push({type:'explosion',x,y,life:.5,max:.5});this.burst(x,y,'#efb86f',25);this.shake=8;this.emit('sound',{name:'explosion'});if(Math.hypot(this.player.x+15-x,this.player.y+28-y)<135)this.hurt(e.damage,x);for(const other of this.enemies)if(other!==e&&!other.dead&&Math.hypot(other.x+other.w/2-x,other.y+other.h/2-y)<140)this.hitEnemy(other,60,Math.sign(other.x-x),false,true);}
  updateBoss(e,dt,dx){
@@ -246,7 +267,21 @@ export class Game{
   }}else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.65:.5;if(e.pattern===1){const bx=e.x+e.w/2,by=e.y+55;const angle=Math.atan2(this.player.y+28-by,this.player.x+15-bx);for(let i=-2;i<=2;i++)this.projectiles.push({x:bx,y:by,vx:Math.cos(angle+i*.2)*(phase===2?265:230),vy:Math.sin(angle+i*.2)*(phase===2?265:230),r:9,damage:15,life:5,color:'#f1b174'});this.emit('sound',{name:'roar'});}}
   else if(e.state==='attack'){if(e.pattern===0){e.vx=e.lockDirection*(phase===2?520:410);if(overlap({...e,x:e.x-10,w:e.w+20},this.player))this.hurt(22,e.x);}if(e.timer<=0){e.state='recover';e.timer=phase===2?.8:1.3;}}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.9:1.35;}
-  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,this.player)&&e.state!=='windup')this.hurt(13,e.x);
+  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,this.player)&&e.state!=='windup')this.hurt(13,e.x,'contact');
+ }
+ updateAlgorithm(e,dt,dx){
+  const p=this.player,phase=e.hp<e.maxHp*.5?2:1;e.facing=dx<0?-1:1;
+  if(e.state==='idle'&&e.timer<=0){
+   e.pattern=e.attackNo++%3;e.state='windup';e.timer=phase===2?1:1.4;e.aimX=p.x+15;e.aimY=p.y+28;
+   this.emit('notice',{text:['예측 사격 · 조준이 고정되면 자리를 바꾸세요','주문 폭주 · 바닥 예고선을 피하세요','데이터 스윕 · 발판 위로 올라가세요'][e.pattern],duration:2});
+   this.log.add('boss_pattern',{pattern:e.pattern,phase});
+  }else if(e.state==='windup'&&e.timer<=0){
+   e.state='attack';e.timer=.7;
+   if(e.pattern===0){const x=e.x+e.w/2,y=e.y+35,a=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-2;i<=2;i++)this.projectiles.push({x,y,vx:Math.cos(a+i*.13)*300,vy:Math.sin(a+i*.13)*300,r:6,damage:18,life:5,color:'#9ae4e6'});}
+   if(e.pattern===1){for(const off of [-160,0,160])this.hazards.push({x:clamp(e.aimX+off,30,this.width-90),y:620,w:60,delay:.8,life:.35,damage:20,hit:false});}
+   if(e.pattern===2){for(let x=30;x<this.width-30;x+=115)this.hazards.push({x,y:620,w:82,delay:1,life:.35,damage:20,hit:false});}
+  }else if(e.state==='attack'&&e.timer<=0){e.state='recover';e.timer=phase===2?1:1.6;}
+  else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.7;}
  }
  updateThreats(dt){
   for(const b of this.projectiles){b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(overlap({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},this.player)){this.hurt(b.damage,b.x);b.life=0;}if(b.x<0||b.x>this.width||b.y>640||b.y<70)b.life=0;}
