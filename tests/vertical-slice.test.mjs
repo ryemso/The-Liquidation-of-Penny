@@ -105,3 +105,37 @@ test('stop-loss crossroads lesson completes when bomb and ghost threats are remo
  assert.equal(game.vsCrossroads.complete,true);
  assert.ok(events.some(event=>event.type==='notice'&&/손절 교차로 학습 완료/.test(event.text)));
 });
+
+test('chapter one exchange allows only one stock purchase',()=>{
+ const {game}=newGame();
+ game.setRoom(2,false);
+ game.state='shop';
+ game.player.gold=200;
+ assert.equal(game.buy('growth'),true);
+ assert.equal(game.buy('value'),false);
+ assert.equal(game.vsShop.stockPurchase,'growth');
+ assert.equal(game.build.filter(id=>['growth','value','dividend'].includes(id)).length,1);
+});
+
+test('chapter one exchange keeps healing as a separate one-time survival choice',()=>{
+ const {game}=newGame();
+ game.setRoom(2,false);
+ game.state='shop';
+ game.player.gold=200;
+ game.player.hp=40;
+ assert.equal(game.buy('heal'),true);
+ assert.equal(game.player.hp,80);
+ assert.equal(game.buy('heal'),false);
+ assert.equal(game.vsShop.healPurchased,true);
+});
+
+test('leaving the chapter one exchange records the resulting decision state',()=>{
+ const {game}=newGame();
+ game.setRoom(2,false);
+ game.state='shop';
+ game.player.gold=100;
+ game.buy('growth');
+ game.closeShop();
+ assert.equal(game.state,'playing');
+ assert.equal(game.vsShop.stockPurchase,'growth');
+});
