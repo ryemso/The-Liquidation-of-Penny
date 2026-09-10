@@ -88,9 +88,6 @@ export class Game{
   if(name==='leverage'&&p.leverageCD<=0){p.leverage=8;p.leverageCD=24;p.leverageDamage=0;p.leverageKills=0;this.emit('sound',{name:'lever'});this.emit('notice',{text:'8초 안에 2마리 처치 또는 피해 160! 실패 시 체력 −18 (최소 1)',duration:4});}
   if(name==='circuit'&&p.circuitCD<=0){this.totems.signal('circuit');this.freeze=2+this.stats.circuitExtra;p.circuitCD=Math.max(8,18-this.stats.circuitReduce);this.heal(this.stats.circuitHeal);this.emit('sound',{name:'circuit'});this.emit('notice',{text:'TRADING HALT · 적과 투사체 정지',duration:2});}
   if(name==='interact'){
-   if(this.relic&&!this.relic.taken&&Math.abs(p.x+p.w/2-this.relic.x)<60&&Math.abs(p.y+p.h/2-this.relic.y)<80){
-    this.state='relic_choice';this.totems.log('totem_offer_shown',null,{offers:[...this.relic.offers]});this.emit('relic_choice',{offers:this.relic.offers});return;
-   }
    if(this.spec.kind==='shop'&&Math.abs(p.x-650)<170){this.state='shop';this.emit('shop');return;}
    if(p.x>this.width-180){
     if(!this.doorOpen){this.emit('notice',{text:'남은 적을 모두 처치하면 출구가 열립니다.',duration:2});return;}
@@ -99,6 +96,15 @@ export class Game{
     this.setRoom(this.room+1);
    }
   }
+ }
+ checkRelicPickup(){
+  const r=this.relic;if(!r||r.taken||this.state!=='playing')return false;
+  const touching=overlap(this.player,{x:r.x-12,y:r.y+7,w:24,h:18});
+  if(!touching){r.waitForExit=false;return false;}
+  if(r.waitForExit)return false;
+  r.waitForExit=true;this.state='relic_choice';
+  this.totems.log('totem_offer_shown',null,{offers:[...r.offers]});
+  this.emit('relic_choice',{offers:r.offers});return true;
  }
  chooseRelic(id){
   if(this.state!=='relic_choice'||!this.relic||this.relic.taken)return false;
@@ -159,6 +165,7 @@ export class Game{
   else if(p.hurt<=0){const dir=(input.right?1:0)-(input.left?1:0);p.vx=dir*this.stats.speed*(p.attack>0?.65:1);if(dir)p.facing=dir;}
   else p.vx*=.91;
   moveBody(p,dt,this.platforms,this.width);
+  if(this.checkRelicPickup())return;
   if(p.y>800){p.y=500;p.x=120;p.vy=0;this.hurt(15,p.x-1);}
   const target=clamp(p.x+p.w/2-500,0,Math.max(0,this.width-1280));this.camera+=(target-this.camera)*Math.min(1,dt*7);this.shake=Math.max(0,this.shake-dt*24);
   if(this.freeze<=0){for(const e of this.enemies)if(!e.dead)this.updateEnemy(e,dt);if(this.spec.pressure&&this.enemies.some(e=>!e.dead)){this.pressureClock+=dt;if(this.pressureClock>8){this.pressureClock=0;for(const offset of [-95,95])this.hazards.push({x:clamp(p.x+offset,40,this.width-100),y:620,w:64,delay:1.3,life:.35,damage:14,hit:false});this.emit('notice',{text:'공매도 경보 · 표시된 바닥에서 벗어나세요',duration:1.8});}}this.updateThreats(dt);}

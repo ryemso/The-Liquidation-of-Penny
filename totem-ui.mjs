@@ -10,7 +10,17 @@ export function inventory(game,showModal,close,acquired){let selected=null;const
  document.getElementById('totem-log').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({schema_version:1,scope:'current_run_totems',truncated:sys.serial>5000,events:sys.logs},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='penny-totem-events.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  };draw();}
 export function hud(game,el){el.classList.toggle('hidden',['title','dead','victory'].includes(game.state));const html=game.totems.slots.map((id,i)=>{const t=TOTEMS.find(t=>t.id===id);if(!t)return `<span class="totem-mini">${i+1} · 빈 슬롯</span>`;const s=game.totems.states[id];return `<span class="totem-mini" title="${t.desc}">${chart(t,s.cd>0?0:s.n/t.steps)}<b>${t.name}</b><small>${s.cd>0?'대기 '+Math.ceil(s.cd)+'초':s.n+'/'+t.steps}${s.n?' · '+Math.ceil(s.time)+'초':''}${s.ready?' · 돌파 준비':''}</small></span>`;}).join('');if(el.innerHTML!==html)el.innerHTML=html;}
-export function drawRelic(game,ctx){const r=game.relic;if(!r||r.taken)return;const t=TOTEMS.find(t=>t.id===r.id);ctx.save();ctx.translate(r.x-25,r.y-25);ctx.fillStyle='#101e30';ctx.fillRect(-8,-8,66,62);ctx.strokeStyle=t.color;ctx.lineWidth=2;ctx.strokeRect(-8,-8,66,62);ctx.beginPath();t.points.split(' ').forEach((p,i)=>{const [x,y]=p.split(',').map(Number);if(i)ctx.lineTo(x*.5,y*.6);else ctx.moveTo(x*.5,y*.6);});ctx.stroke();ctx.fillStyle=t.color;ctx.textAlign='center';ctx.font='600 14px sans-serif';ctx.fillText('↑ 차트 보관함',25,-20);ctx.restore();}
+// Small, code-native pixel pickup icon: 24 x 18 world pixels.
+export function drawRelic(game,ctx){
+ const r=game.relic;if(!r||r.taken)return;
+ ctx.save();ctx.translate(Math.round(r.x-12),Math.round(r.y+7));
+ const box=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y,w,h);};
+ box(0,0,24,18,'#171b25');box(2,2,20,5,'#bd8c48');
+ box(2,9,20,7,'#76502f');box(3,3,18,2,'#e3b96e');
+ box(4,2,3,14,'#d0a657');box(17,2,3,14,'#d0a657');
+ box(0,7,24,2,'#30251d');box(10,6,5,6,'#f0d087');box(12,8,1,2,'#493a2a');
+ ctx.restore();
+}
 
 export function chooseRelic(game,showModal){
  const offers=game.relic.offers.map(id=>TOTEMS.find(t=>t.id===id));
