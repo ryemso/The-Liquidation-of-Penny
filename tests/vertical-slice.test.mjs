@@ -71,3 +71,37 @@ test('room one tutorial does not accept profit before the required profit thresh
  assert.equal(game.vsTutorial.step,4);
  assert.equal(game.vsTutorial.complete,false);
 });
+
+test('stop-loss crossroads records an evasive response to the bomb telegraph',()=>{
+ const {game,events}=newGame();
+ game.setRoom(1);
+ const bomb=game.enemies.find(enemy=>enemy.type==='bomb');
+ bomb.activated=true;
+ bomb.state='windup';
+ game.player.x=bomb.x-120;
+ game.player.dashCD=0;
+ game.action('dash');
+ assert.equal(game.vsCrossroads.bombResponse,true);
+ assert.ok(events.some(event=>event.type==='notice'&&/손절 대응 성공/.test(event.text)));
+});
+
+test('stop-loss crossroads records a response to a ghost aiming sequence',()=>{
+ const {game,events}=newGame();
+ game.setRoom(1);
+ const ghost=game.enemies.find(enemy=>enemy.type==='ghost');
+ ghost.activated=true;
+ ghost.state='windup';
+ game.player.x=ghost.x-180;
+ game.action('jump');
+ assert.equal(game.vsCrossroads.ghostResponse,true);
+ assert.ok(events.some(event=>event.type==='notice'&&/원거리 대응 성공/.test(event.text)));
+});
+
+test('stop-loss crossroads lesson completes when bomb and ghost threats are removed',()=>{
+ const {game,events}=newGame();
+ game.setRoom(1);
+ for(const enemy of game.enemies)if(['bomb','ghost'].includes(enemy.type))enemy.dead=true;
+ step(game,.02);
+ assert.equal(game.vsCrossroads.complete,true);
+ assert.ok(events.some(event=>event.type==='notice'&&/손절 교차로 학습 완료/.test(event.text)));
+});
