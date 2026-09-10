@@ -53,7 +53,7 @@ test('room transitions emit balance summaries for later playtest tuning',()=>{
  game.totalTime=60;
  game.setRoom(1,false);
  const rows=game.log.export().events||[];
- const summary=rows.find(row=>row.type==='balance_room_summary'&&row.room===1);
+ const summary=rows.find(row=>row.event==='balance_room_summary'&&row.room===1);
  assert.ok(summary);
  assert.equal(summary.duration,60);
  assert.equal(summary.pace,'target');
@@ -64,7 +64,7 @@ test('finishing a run records overall balance telemetry',()=>{
  game.totalTime=540;
  game.finish(true);
  const rows=game.log.export().events||[];
- const summary=rows.find(row=>row.type==='balance_run_summary');
+ const summary=rows.find(row=>row.event==='balance_run_summary');
  assert.ok(summary);
  assert.equal(summary.duration,540);
  assert.equal(summary.pace,'target');
