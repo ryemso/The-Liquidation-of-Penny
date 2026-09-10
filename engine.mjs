@@ -76,7 +76,8 @@ export class Game{
   if(this.log?.started)this.log.stageStart();
   if(announce){this.emit('room',{room:this.spec});if(this.spec.kind==='shop')this.emit('notice',{text:`${this.spec.name} · 중앙 교환소 앞에서 ↑`,duration:5});if(this.spec.kind==='boss')this.emit('notice',{text:this.spec.chapter===1?'“내 말만 믿어. 손실은 언제나 네 몫이지.”':'“네 가치는 담보로도 부족하다. 청산을 집행한다.”',duration:5});if(index===5)this.emit('notice',{text:'방패는 뒤에서 공격하거나 익절로 관통하세요. 드론의 조준선은 발사 전에 고정됩니다.',duration:7});if(this.spec.pressure)this.emit('notice',{text:'공매도 경보 · 표시된 바닥 밖으로 이동하거나 발판으로 피하세요.',duration:6});}
  }
- enterChapterTwo(){if(this.state!=='chapter'||this.room!==4||this.promoted)return;this.promoted=true;this.rank='SMALL CAP';this.player.maxHp+=20;this.heal(45);this.stats.atk+=6;this.player.profit=50;for(const key of ['profitCD','leverageCD','circuitCD','dashCD'])this.player[key]=0;this.market=0;this.marketClock=0;this.state='playing';this.emit('resume');this.setRoom(5);this.emit('sound',{name:'reward'});}
+ prepareChapterTwo(){if(this.promoted)return;this.promoted=true;this.rank='SMALL CAP';this.player.maxHp+=20;this.heal(45);this.stats.atk+=6;this.player.profit=50;}
+ enterChapterTwo(){if(this.state!=='chapter'||this.room!==4||this.promoted)return;this.prepareChapterTwo();for(const key of ['profitCD','leverageCD','circuitCD','dashCD'])this.player[key]=0;this.market=0;this.marketClock=0;this.state='playing';this.emit('resume');this.setRoom(5);this.emit('sound',{name:'reward'});}
  enterNextChapter(){if(this.room===4){this.enterChapterTwo();return;}if(this.room!==9||this.state!=='chapter')return;this.rank='MID CAP';this.player.maxHp+=20;this.heal(45);this.stats.atk+=6;this.player.profit=50;this.state='playing';this.emit('resume');this.setRoom(10);}
  makeEnemy(type,x,bottom,elite=false){
   const data={algorithm:{w:110,h:110,hp:1850,speed:65,damage:20,gold:320,boss:true},rubble:{w:60,h:46,hp:52,speed:67,damage:12,gold:20},bomb:{w:50,h:50,hp:44,speed:45,damage:22,gold:24},ghost:{w:42,h:60,hp:46,speed:47,damage:10,gold:26,flying:true},boss:{w:110,h:138,hp:940,speed:55,damage:17,gold:170,boss:true},shield:{w:64,h:62,hp:105,speed:54,damage:17,gold:34,armored:true},drone:{w:48,h:42,hp:70,speed:65,damage:13,gold:32,flying:true},enforcer:{w:148,h:138,hp:1500,speed:53,damage:22,gold:250,boss:true,armored:true}}[type];
@@ -147,12 +148,12 @@ export class Game{
   if(this.player.leverage>0)this.player.leverageDamage+=dealt;
   if(e.hp<=0){this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;const gold=Math.round(e.gold*(this.market===2?1.35:1));this.player.gold+=gold;this.floatText(e.x,e.y-40,`+${gold} 시드`,'#f0c875',13);this.burst(e.x+e.w/2,e.y+e.h/2,'#dcb96d',18);if(e.boss){this.shake=13;this.projectiles=[];this.hazards=[];this.emit('sound',{name:'bossdown'});}}
  }
- hurt(amount,sourceX,kind='attack'){
-  if(this.enemies.some(e=>e.x===sourceX&&e.attackWeak>0))amount*=.75;
-  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind==='attack'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX});p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
+ hurt(amount,sourceX,kind='attack',source=null){
+  if(kind==='attack'&&source?.attackWeak>0)amount*=.75;
+  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind});p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
  }
  heal(amount){if(amount<=0)return;const p=this.player,actual=Math.min(p.maxHp-p.hp,amount);p.hp+=actual;if(actual>0)this.floatText(p.x,p.y-20,`+${actual} HP`,'#88d4ac',15);}
- settleLeverage(){const p=this.player;const ok=p.leverageDamage>=160||p.leverageKills>=2;p.leverage=0;if(ok){p.gold+=18;this.emit('notice',{text:'상환 성공 · 추가 시드 +18',duration:3});this.emit('sound',{name:'reward'});}else{p.hp=Math.max(1,p.hp-18);this.floatText(p.x,p.y-20,'상환 −18 HP','#ff9b7a',16);this.emit('notice',{text:'레버리지 상환 · 체력 −18',duration:3});}}
+ settleLeverage(){const p=this.player;const ok=p.leverageDamage>=160||p.leverageKills>=2;p.leverage=0;if(ok){p.gold+=18;this.emit('notice',{text:'상환 성공 · 추가 시드 +18',duration:3});this.emit('sound',{name:'reward'});}else{const cost=Math.min(18,Math.max(0,p.hp-1));p.hp-=cost;this.log.add('health_cost',{amount:cost,reason:'leverage_repayment'});this.floatText(p.x,p.y-20,'상환 −18 HP','#ff9b7a',16);this.emit('notice',{text:'레버리지 상환 · 체력 −18',duration:3});}}
  chooseReward(id){if(this.state!=='reward'||!this.currentOffers?.includes(id))return;this.log.add('reward_selected',{reward_id:id,offers:this.currentOffers});this.applyCard(id);this.state='playing';this.doorOpen=true;this.emit('resume');this.emit('notice',{text:'포트폴리오 편입 완료 · 오른쪽 출구에서 ↑',duration:4});}
  applyCard(id){const card=CARDS.find(c=>c.id===id);if(!card)return;this.build.push(id);const s=this.stats,p=this.player;
   if(id==='growth'){s.atk+=5;s.profitGain+=1;}if(id==='dividend'){s.dividend+=12;this.heal(12);}if(id==='value'){p.maxHp+=20;this.heal(20);s.armor+=.08;}if(id==='meme')s.crit=Math.min(.85,s.crit+.2);if(id==='liquidity'){s.speed*=1.12;s.dashFactor*=.8;}if(id==='short')s.short++;if(id==='circuit'){s.circuitExtra++;s.circuitReduce+=3;}if(id==='profit'){s.profitHeal+=8;s.profitGain+=4;}if(id==='breakout'){s.guardPierce=Math.min(.7,s.guardPierce+.35);s.atk+=3;}if(id==='hedge'){s.circuitHeal+=10;s.armor+=.05;}this.emit('sound',{name:'reward'});
@@ -186,7 +187,7 @@ export class Game{
   else p.vx*=.91;
   moveBody(p,dt,this.platforms,this.width);
   if(this.checkRelicPickup())return;
-  if(p.y>800){p.y=500;p.x=120;p.vy=0;this.hurt(15,p.x-1);}
+  if(p.y>800){p.y=500;p.x=120;p.vy=0;this.hurt(15,p.x-1,'fall');}
   const target=clamp(p.x+p.w/2-500,0,Math.max(0,this.width-1280));this.camera+=(target-this.camera)*Math.min(1,dt*7);this.shake=Math.max(0,this.shake-dt*24);
   if(this.freeze<=0){for(const e of this.enemies)if(!e.dead)this.updateEnemy(e,dt);if(this.spec.pressure&&this.enemies.some(e=>!e.dead)){this.pressureClock+=dt;if(this.pressureClock>8){this.pressureClock=0;for(const offset of [-95,95])this.hazards.push({x:clamp(p.x+offset,40,this.width-100),y:620,w:64,delay:1.3,life:.35,damage:14,hit:false});this.emit('notice',{text:'공매도 경보 · 표시된 바닥에서 벗어나세요',duration:1.8});}}this.updateThreats(dt);}
   for(const e of this.enemies){e.flash=Math.max(0,e.flash-dt);e.inv=Math.max(0,e.inv-dt);}
@@ -217,7 +218,7 @@ export class Game{
   e.vx=0;
   if(e.state==='idle'){e.facing=dx<0?-1:1;if(dist>75)e.vx=e.facing*e.speed;if(dist<(e.type==='bomb'?145:115)&&Math.abs(dy)<85&&e.timer<=0){e.state='windup';e.timer=e.type==='bomb'?1.15:.6;e.lockDirection=e.facing;}}
   else if(e.state==='windup'&&e.timer<=0){if(e.type==='bomb'){e.state='charge';e.timer=.6;}else{e.state='attack';e.timer=.3;}}
-  else if(e.state==='attack'){e.vx=e.lockDirection*330;if(overlap({...e,x:e.x-12,w:e.w+24},p))this.hurt(e.damage,e.x);if(e.timer<=0){e.state='recover';e.timer=.7;}}
+  else if(e.state==='attack'){e.vx=e.lockDirection*330;if(overlap({...e,x:e.x-12,w:e.w+24},p))this.hurt(e.damage,e.x,'attack',e);if(e.timer<=0){e.state='recover';e.timer=.7;}}
   else if(e.state==='charge'){e.vx=e.lockDirection*260;if(e.timer<=0){this.explode(e);return;}}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.75;}
   if(e.type==='bomb'&&e.state==='idle'&&Math.abs(dy)>95)e.vx=0;
@@ -228,7 +229,7 @@ export class Game{
   e.vx=0;
   if(e.state==='idle'){e.facing=dx<0?-1:1;if(Math.abs(dx)>92)e.vx=e.facing*e.speed;if(Math.abs(dx)<150&&Math.abs(dy)<100&&e.timer<=0){e.state='windup';e.timer=.9;e.lockDirection=e.facing;}}
   else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=.34;this.emit('sound',{name:'dash'});}
-  else if(e.state==='attack'){e.vx=e.lockDirection*340;if(overlap({...e,x:e.x-8,w:e.w+16},this.player))this.hurt(e.damage,e.x);if(e.timer<=0){e.state='recover';e.timer=1.15;}}
+  else if(e.state==='attack'){e.vx=e.lockDirection*340;if(overlap({...e,x:e.x-8,w:e.w+16},this.player))this.hurt(e.damage,e.x,'attack',e);if(e.timer<=0){e.state='recover';e.timer=1.15;}}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.9;}
   moveBody(e,dt,this.platforms,this.width);if(overlap(e,this.player)&&e.state==='idle')this.hurt(9,e.x,'contact');
  }
@@ -251,7 +252,7 @@ export class Game{
    }
   }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.62:.95;e.secondVolley=phase===2&&e.pattern===1;if(e.pattern===1)this.fireEnforcer(e,phase);}
   else if(e.state==='attack'){
-   if(e.pattern===0){e.vx=e.lockDirection*(phase===2?500:425);if(overlap({...e,x:e.x-12,w:e.w+24},p))this.hurt(e.damage,e.x);}
+   if(e.pattern===0){e.vx=e.lockDirection*(phase===2?500:425);if(overlap({...e,x:e.x-12,w:e.w+24},p))this.hurt(e.damage,e.x,'attack',e);}
    if(e.secondVolley&&e.timer<.48){e.secondVolley=false;this.fireEnforcer(e,phase);}
    if(e.timer<=0){e.state='recover';e.timer=phase===2?1.05:1.5;this.floatText(e.x+e.w/2,e.y-18,'방패 개방','#e5d49c',13);}
   }else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.85:1.15;}
@@ -265,7 +266,7 @@ export class Game{
    if(e.pattern===1){this.emit('notice',{text:'허위 매수 신호 · 확성기 탄막을 피하세요',duration:2});}
    if(e.pattern===2){const px=this.player.x;for(const offset of [-165,0,165])this.hazards.push({x:clamp(px+offset,80,this.width-100),y:620,w:72,delay:e.timer+.25,life:.45,damage:19,hit:false});this.emit('notice',{text:'거짓 지지선 · 붉은 바닥 밖으로 이동',duration:2});}
   }}else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.65:.5;if(e.pattern===1){const bx=e.x+e.w/2,by=e.y+55;const angle=Math.atan2(this.player.y+28-by,this.player.x+15-bx);for(let i=-2;i<=2;i++)this.projectiles.push({x:bx,y:by,vx:Math.cos(angle+i*.2)*(phase===2?265:230),vy:Math.sin(angle+i*.2)*(phase===2?265:230),r:9,damage:15,life:5,color:'#f1b174'});this.emit('sound',{name:'roar'});}}
-  else if(e.state==='attack'){if(e.pattern===0){e.vx=e.lockDirection*(phase===2?520:410);if(overlap({...e,x:e.x-10,w:e.w+20},this.player))this.hurt(22,e.x);}if(e.timer<=0){e.state='recover';e.timer=phase===2?.8:1.3;}}
+  else if(e.state==='attack'){if(e.pattern===0){e.vx=e.lockDirection*(phase===2?520:410);if(overlap({...e,x:e.x-10,w:e.w+20},this.player))this.hurt(22,e.x,'attack',e);}if(e.timer<=0){e.state='recover';e.timer=phase===2?.8:1.3;}}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.9:1.35;}
   moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,this.player)&&e.state!=='windup')this.hurt(13,e.x,'contact');
  }
@@ -284,9 +285,9 @@ export class Game{
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.7;}
  }
  updateThreats(dt){
-  for(const b of this.projectiles){b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(overlap({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},this.player)){this.hurt(b.damage,b.x);b.life=0;}if(b.x<0||b.x>this.width||b.y>640||b.y<70)b.life=0;}
+  for(const b of this.projectiles){b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(overlap({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},this.player)){this.hurt(b.damage,b.x,'projectile');b.life=0;}if(b.x<0||b.x>this.width||b.y>640||b.y<70)b.life=0;}
   this.projectiles=this.projectiles.filter(b=>b.life>0);
-  for(const h of this.hazards){h.delay-=dt;if(h.delay<=0){h.life-=dt;if(!h.hit){h.hit=true;this.burst(h.x+h.w/2,610,'#d79572',13);this.emit('sound',{name:'explosion'});}if(overlap({x:h.x,y:455,w:h.w,h:165},this.player))this.hurt(h.damage,h.x);}}
+  for(const h of this.hazards){h.delay-=dt;if(h.delay<=0){h.life-=dt;if(!h.hit){h.hit=true;this.burst(h.x+h.w/2,610,'#d79572',13);this.emit('sound',{name:'explosion'});}if(overlap({x:h.x,y:455,w:h.w,h:165},this.player))this.hurt(h.damage,h.x,'hazard');}}
   this.hazards=this.hazards.filter(h=>h.life>0);
  }
 }
