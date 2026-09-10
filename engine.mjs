@@ -150,7 +150,7 @@ export class Game{
  }
  hurt(amount,sourceX,kind='attack',source=null){
   if(kind==='attack'&&source?.attackWeak>0)amount*=.75;
-  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind});p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
+  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind,source_type:source?.type??(kind==='hazard'?'environment':null)});p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
  }
  heal(amount){if(amount<=0)return;const p=this.player,actual=Math.min(p.maxHp-p.hp,amount);p.hp+=actual;if(actual>0)this.floatText(p.x,p.y-20,`+${actual} HP`,'#88d4ac',15);}
  settleLeverage(){const p=this.player;const ok=p.leverageDamage>=160||p.leverageKills>=2;p.leverage=0;if(ok){p.gold+=18;this.emit('notice',{text:'상환 성공 · 추가 시드 +18',duration:3});this.emit('sound',{name:'reward'});}else{const cost=Math.min(18,Math.max(0,p.hp-1));p.hp-=cost;this.log.add('health_cost',{amount:cost,reason:'leverage_repayment'});this.floatText(p.x,p.y-20,'상환 −18 HP','#ff9b7a',16);this.emit('notice',{text:'레버리지 상환 · 체력 −18',duration:3});}}
@@ -211,9 +211,9 @@ export class Game{
   if(e.type==='drone'){this.updateDrone(e,dt,dx);return;}
   if(e.type==='ghost'){
    if(e.state==='idle'){e.facing=dx<0?-1:1;e.x=clamp(e.x+Math.sign(dx)*(dist>230?e.speed:dist<135?-e.speed:0)*dt,10,this.width-e.w-10);const wanted=clamp(p.y-55,280,505);e.y+=(wanted-e.y)*dt*.9;e.y+=Math.sin(e.anim*3)*dt*10;if(e.timer<=0&&dist<530){e.state='windup';e.timer=.65;}}
-   else if(e.state==='windup'&&e.timer<=0){const len=Math.hypot(dx,dy)||1;this.projectiles.push({x:e.x+e.w/2,y:e.y+e.h*.4,vx:dx/len*225,vy:dy/len*225,r:7,damage:e.damage,life:5,color:'#80c9ed'});e.state='recover';e.timer=.55;this.emit('sound',{name:'shot'});}
+   else if(e.state==='windup'&&e.timer<=0){const len=Math.hypot(dx,dy)||1;this.projectiles.push({source:{id:e.id,type:e.type},x:e.x+e.w/2,y:e.y+e.h*.4,vx:dx/len*225,vy:dy/len*225,r:7,damage:e.damage,life:5,color:'#80c9ed'});e.state='recover';e.timer=.55;this.emit('sound',{name:'shot'});}
    else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=1.7;}
-   if(overlap(p,e))this.hurt(e.damage,e.x,'contact');return;
+   if(overlap(p,e))this.hurt(e.damage,e.x,'contact',e);return;
   }
   e.vx=0;
   if(e.state==='idle'){e.facing=dx<0?-1:1;if(dist>75)e.vx=e.facing*e.speed;if(dist<(e.type==='bomb'?145:115)&&Math.abs(dy)<85&&e.timer<=0){e.state='windup';e.timer=e.type==='bomb'?1.15:.6;e.lockDirection=e.facing;}}
@@ -223,7 +223,7 @@ export class Game{
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.75;}
   if(e.type==='bomb'&&e.state==='idle'&&Math.abs(dy)>95)e.vx=0;
   moveBody(e,dt,this.platforms,this.width);
-  if(overlap(p,e)&&e.state!=='windup')this.hurt(e.damage*.7,e.x,'contact');
+  if(overlap(p,e)&&e.state!=='windup')this.hurt(e.damage*.7,e.x,'contact',e);
  }
  updateShield(e,dt,dx,dy){
   e.vx=0;
@@ -231,16 +231,16 @@ export class Game{
   else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=.34;this.emit('sound',{name:'dash'});}
   else if(e.state==='attack'){e.vx=e.lockDirection*340;if(overlap({...e,x:e.x-8,w:e.w+16},this.player))this.hurt(e.damage,e.x,'attack',e);if(e.timer<=0){e.state='recover';e.timer=1.15;}}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.9;}
-  moveBody(e,dt,this.platforms,this.width);if(overlap(e,this.player)&&e.state==='idle')this.hurt(9,e.x,'contact');
+  moveBody(e,dt,this.platforms,this.width);if(overlap(e,this.player)&&e.state==='idle')this.hurt(9,e.x,'contact',e);
  }
  updateDrone(e,dt,dx){
   const p=this.player;
   if(e.state==='idle'){e.facing=dx<0?-1:1;const dist=Math.abs(dx);e.vx=Math.sign(dx)*(dist>260?e.speed:dist<165?-e.speed:0);e.x=clamp(e.x+e.vx*dt,15,this.width-e.w-15);e.y+=(clamp(p.y-95,340,490)-e.y)*dt*.8;e.y+=Math.sin(e.anim*4)*dt*12;if(e.timer<=0&&dist<580){e.state='windup';e.timer=.85;e.aimX=clamp(p.x+15+p.vx*.3,10,this.width-10);e.aimY=p.y+28;}}
-  else if(e.state==='windup'&&e.timer<=0){const x=e.x+e.w/2,y=e.y+e.h/2,angle=Math.atan2(e.aimY-y,e.aimX-x);for(const offset of [-.08,.08])this.projectiles.push({x,y,vx:Math.cos(angle+offset)*270,vy:Math.sin(angle+offset)*270,r:6,damage:e.damage,life:5,color:'#75d9de'});e.state='recover';e.timer=.55;this.emit('sound',{name:'shot'});}
+  else if(e.state==='windup'&&e.timer<=0){const x=e.x+e.w/2,y=e.y+e.h/2,angle=Math.atan2(e.aimY-y,e.aimX-x);for(const offset of [-.08,.08])this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(angle+offset)*270,vy:Math.sin(angle+offset)*270,r:6,damage:e.damage,life:5,color:'#75d9de'});e.state='recover';e.timer=.55;this.emit('sound',{name:'shot'});}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=1.6;}
-  if(overlap(e,p))this.hurt(8,e.x,'contact');
+  if(overlap(e,p))this.hurt(8,e.x,'contact',e);
  }
- fireEnforcer(e,phase){const x=e.x+e.w/2,y=e.y+44,angle=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-2;i<=2;i++)this.projectiles.push({x,y,vx:Math.cos(angle+i*.15)*(phase===2?290:255),vy:Math.sin(angle+i*.15)*(phase===2?290:255),r:8,damage:16,life:5,color:'#84dae2'});this.emit('sound',{name:'roar'});}
+ fireEnforcer(e,phase){const x=e.x+e.w/2,y=e.y+44,angle=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-2;i<=2;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(angle+i*.15)*(phase===2?290:255),vy:Math.sin(angle+i*.15)*(phase===2?290:255),r:8,damage:16,life:5,color:'#84dae2'});this.emit('sound',{name:'roar'});}
  updateEnforcer(e,dt,dx){
   const p=this.player,phase=e.hp<e.maxHp*.5?2:1;e.vx=0;
   if(e.state==='idle'){
@@ -248,7 +248,7 @@ export class Game{
    if(e.timer<=0){e.attackNo++;e.pattern=e.attackNo%3;e.state='windup';e.timer=1.25;e.lockDirection=e.facing;e.aimX=p.x+15;e.aimY=p.y+28;
     if(e.pattern===0)this.emit('notice',{text:'매도벽 압박 · 돌진 후 열린 방패가 공격 기회입니다.',duration:2.5});
     if(e.pattern===1)this.emit('notice',{text:'차입 매도 탄막 · 고정된 조준선에서 벗어나세요.',duration:2.5});
-    if(e.pattern===2){const gap=clamp(p.x+(p.x<this.width/2?170:-170),180,this.width-180);e.safeGap=gap;for(let x=60;x<this.width-60;x+=105)if(Math.abs(x+43-gap)>120)this.hazards.push({x,y:620,w:84,delay:1.5,life:.42,damage:22,hit:false});this.emit('notice',{text:'마진콜 집행 · 표시가 없는 틈이나 높은 발판으로!',duration:2.5});}
+    if(e.pattern===2){const gap=clamp(p.x+(p.x<this.width/2?170:-170),180,this.width-180);e.safeGap=gap;for(let x=60;x<this.width-60;x+=105)if(Math.abs(x+43-gap)>120)this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:84,delay:1.5,life:.42,damage:22,hit:false});this.emit('notice',{text:'마진콜 집행 · 표시가 없는 틈이나 높은 발판으로!',duration:2.5});}
    }
   }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.62:.95;e.secondVolley=phase===2&&e.pattern===1;if(e.pattern===1)this.fireEnforcer(e,phase);}
   else if(e.state==='attack'){
@@ -256,19 +256,19 @@ export class Game{
    if(e.secondVolley&&e.timer<.48){e.secondVolley=false;this.fireEnforcer(e,phase);}
    if(e.timer<=0){e.state='recover';e.timer=phase===2?1.05:1.5;this.floatText(e.x+e.w/2,e.y-18,'방패 개방','#e5d49c',13);}
   }else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.85:1.15;}
-  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,p)&&e.state==='idle')this.hurt(12,e.x,'contact');
+  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,p)&&e.state==='idle')this.hurt(12,e.x,'contact',e);
  }
- explode(e){e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;this.player.gold+=Math.round(e.gold*(this.market===2?1.35:1));const x=e.x+e.w/2,y=e.y+e.h/2;this.effects.push({type:'explosion',x,y,life:.5,max:.5});this.burst(x,y,'#efb86f',25);this.shake=8;this.emit('sound',{name:'explosion'});if(Math.hypot(this.player.x+15-x,this.player.y+28-y)<135)this.hurt(e.damage,x);for(const other of this.enemies)if(other!==e&&!other.dead&&Math.hypot(other.x+other.w/2-x,other.y+other.h/2-y)<140)this.hitEnemy(other,60,Math.sign(other.x-x),false,true);}
+ explode(e){if(e.dead)return;this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional,cause:'self_destruct'});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;this.player.gold+=Math.round(e.gold*(this.market===2?1.35:1));const x=e.x+e.w/2,y=e.y+e.h/2;this.effects.push({type:'explosion',x,y,life:.5,max:.5});this.burst(x,y,'#efb86f',25);this.shake=8;this.emit('sound',{name:'explosion'});if(Math.hypot(this.player.x+15-x,this.player.y+28-y)<135)this.hurt(e.damage,x,'explosion',e);for(const other of this.enemies)if(other!==e&&!other.dead&&Math.hypot(other.x+other.w/2-x,other.y+other.h/2-y)<140)this.hitEnemy(other,60,Math.sign(other.x-x),false,true);}
  updateBoss(e,dt,dx){
   const phase=e.hp<e.maxHp*.5?2:1;e.facing=dx<0?-1:1;e.vx=0;
   if(e.state==='idle'){if(Math.abs(dx)>230)e.vx=e.facing*e.speed;if(e.timer<=0){e.attackNo++;e.pattern=e.attackNo%3;e.state='windup';e.timer=phase===2?.9:1.15;e.lockDirection=e.facing;
    if(e.pattern===0){this.emit('notice',{text:'물량 밀어내기 · 돌진을 점프하거나 대시로 회피',duration:2});}
    if(e.pattern===1){this.emit('notice',{text:'허위 매수 신호 · 확성기 탄막을 피하세요',duration:2});}
-   if(e.pattern===2){const px=this.player.x;for(const offset of [-165,0,165])this.hazards.push({x:clamp(px+offset,80,this.width-100),y:620,w:72,delay:e.timer+.25,life:.45,damage:19,hit:false});this.emit('notice',{text:'거짓 지지선 · 붉은 바닥 밖으로 이동',duration:2});}
-  }}else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.65:.5;if(e.pattern===1){const bx=e.x+e.w/2,by=e.y+55;const angle=Math.atan2(this.player.y+28-by,this.player.x+15-bx);for(let i=-2;i<=2;i++)this.projectiles.push({x:bx,y:by,vx:Math.cos(angle+i*.2)*(phase===2?265:230),vy:Math.sin(angle+i*.2)*(phase===2?265:230),r:9,damage:15,life:5,color:'#f1b174'});this.emit('sound',{name:'roar'});}}
+   if(e.pattern===2){const px=this.player.x;for(const offset of [-165,0,165])this.hazards.push({source:{id:e.id,type:e.type},x:clamp(px+offset,80,this.width-100),y:620,w:72,delay:e.timer+.25,life:.45,damage:19,hit:false});this.emit('notice',{text:'거짓 지지선 · 붉은 바닥 밖으로 이동',duration:2});}
+  }}else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.65:.5;if(e.pattern===1){const bx=e.x+e.w/2,by=e.y+55;const angle=Math.atan2(this.player.y+28-by,this.player.x+15-bx);for(let i=-2;i<=2;i++)this.projectiles.push({source:{id:e.id,type:e.type},x:bx,y:by,vx:Math.cos(angle+i*.2)*(phase===2?265:230),vy:Math.sin(angle+i*.2)*(phase===2?265:230),r:9,damage:15,life:5,color:'#f1b174'});this.emit('sound',{name:'roar'});}}
   else if(e.state==='attack'){if(e.pattern===0){e.vx=e.lockDirection*(phase===2?520:410);if(overlap({...e,x:e.x-10,w:e.w+20},this.player))this.hurt(22,e.x,'attack',e);}if(e.timer<=0){e.state='recover';e.timer=phase===2?.8:1.3;}}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.9:1.35;}
-  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,this.player)&&e.state!=='windup')this.hurt(13,e.x,'contact');
+  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,this.player)&&e.state!=='windup')this.hurt(13,e.x,'contact',e);
  }
  updateAlgorithm(e,dt,dx){
   const p=this.player,phase=e.hp<e.maxHp*.5?2:1;e.facing=dx<0?-1:1;
@@ -278,16 +278,16 @@ export class Game{
    this.log.add('boss_pattern',{pattern:e.pattern,phase});
   }else if(e.state==='windup'&&e.timer<=0){
    e.state='attack';e.timer=.7;
-   if(e.pattern===0){const x=e.x+e.w/2,y=e.y+35,a=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-2;i<=2;i++)this.projectiles.push({x,y,vx:Math.cos(a+i*.13)*300,vy:Math.sin(a+i*.13)*300,r:6,damage:18,life:5,color:'#9ae4e6'});}
-   if(e.pattern===1){for(const off of [-160,0,160])this.hazards.push({x:clamp(e.aimX+off,30,this.width-90),y:620,w:60,delay:.8,life:.35,damage:20,hit:false});}
-   if(e.pattern===2){for(let x=30;x<this.width-30;x+=115)this.hazards.push({x,y:620,w:82,delay:1,life:.35,damage:20,hit:false});}
+   if(e.pattern===0){const x=e.x+e.w/2,y=e.y+35,a=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-2;i<=2;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(a+i*.13)*300,vy:Math.sin(a+i*.13)*300,r:6,damage:18,life:5,color:'#9ae4e6'});}
+   if(e.pattern===1){for(const off of [-160,0,160])this.hazards.push({source:{id:e.id,type:e.type},x:clamp(e.aimX+off,30,this.width-90),y:620,w:60,delay:.8,life:.35,damage:20,hit:false});}
+   if(e.pattern===2){for(let x=30;x<this.width-30;x+=115)this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:82,delay:1,life:.35,damage:20,hit:false});}
   }else if(e.state==='attack'&&e.timer<=0){e.state='recover';e.timer=phase===2?1:1.6;}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.7;}
  }
  updateThreats(dt){
-  for(const b of this.projectiles){b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(overlap({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},this.player)){this.hurt(b.damage,b.x,'projectile');b.life=0;}if(b.x<0||b.x>this.width||b.y>640||b.y<70)b.life=0;}
+  for(const b of this.projectiles){b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(overlap({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},this.player)){this.hurt(b.damage,b.x,'projectile',b.source);b.life=0;}if(b.x<0||b.x>this.width||b.y>640||b.y<70)b.life=0;}
   this.projectiles=this.projectiles.filter(b=>b.life>0);
-  for(const h of this.hazards){h.delay-=dt;if(h.delay<=0){h.life-=dt;if(!h.hit){h.hit=true;this.burst(h.x+h.w/2,610,'#d79572',13);this.emit('sound',{name:'explosion'});}if(overlap({x:h.x,y:455,w:h.w,h:165},this.player))this.hurt(h.damage,h.x,'hazard');}}
+  for(const h of this.hazards){h.delay-=dt;if(h.delay<=0){h.life-=dt;if(!h.hit){h.hit=true;this.burst(h.x+h.w/2,610,'#d79572',13);this.emit('sound',{name:'explosion'});}if(overlap({x:h.x,y:455,w:h.w,h:165},this.player))this.hurt(h.damage,h.x,'hazard',h.source);}}
   this.hazards=this.hazards.filter(h=>h.life>0);
  }
 }
