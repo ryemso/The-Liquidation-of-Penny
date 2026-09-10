@@ -1,3 +1,4 @@
+import {inventory,hud as totemHUD,drawRelic,chooseRelic} from './totem-ui.mjs';
 import {Game,MARKETS,CARDS,ROOM_SPECS,clamp} from './engine.mjs';
 import {StageMusic} from './audio.mjs';
 const $=id=>document.getElementById(id);
@@ -23,6 +24,8 @@ function hideModal(){modalKind='';modalCards=[];$('modal').classList.add('hidden
 const fmtTime=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 const cardHTML=(card,i,shop=false)=>`<button class="card" data-card="${card.id}" ${shop&&game.player.gold<card.price?'disabled':''}><span class="card-number">${shop?'':`[${i+1}]`}</span><span class="card-symbol">${card.symbol}</span><span class="tag">${card.tag}</span><h3>${card.name}</h3><p>${card.desc}</p>${shop?`<span class="price">◈ ${card.price}</span>`:''}</button>`;
 function event(e){
+ if(e.type==='relic_choice'){stageMusic.setScene('reward',game.spec.chapter);chooseRelic(game,showModal);return;}
+ if(e.type==='totems'){openTotems(e.acquired);return;}
  if(e.type==='sound'){audioFX.play(e.name);return;}
  if(e.type==='notice')showNotice(e.text,e.duration);
  if(e.type==='room'){$('room-kicker').textContent=e.room.subtitle;$('room-title').textContent=e.room.name;$('room-toast').classList.remove('hidden');roomUntil=performance.now()+3000;$('footer-location').textContent=e.room.chapterName+' · '+e.room.name;$('chapter-tag').textContent=`CHAPTER 0${e.room.chapter} · ${e.room.chapterName}`;$('boss-hud').classList.toggle('hidden',e.room.kind!=='boss');if(e.room.kind==='boss')$('boss-name').textContent=e.room.bossName||'보스';stageMusic.setScene('playing',e.room.chapter);}
@@ -34,9 +37,11 @@ function event(e){
  if(e.type==='finish'){stageMusic.setScene('title',game.spec.chapter);
   if(!savedRun){progress.knowledge+=e.knowledge;progress.runs++;progress.best=Math.max(progress.best,game.room+1);if(e.won)progress.wins++;savedRun=true;if(!saveProgress())showNotice('브라우저 저장이 차단되어 기록은 이 화면을 닫기 전까지만 유지됩니다.',12);}
   const won=e.won;
-  showModal(`<span class="eyebrow">${won?'LISTING APPROVED · 상장 승인':'LIQUIDATED · 이번 도전 종료'}</span><h2 id="modal-title">${won?'Penny Stock → Small Cap':'청산되었습니다'}</h2><p>${won?'선동가의 확성기는 부서졌습니다. 평범한 사람의 첫 반란이 시장에 기록됩니다.<br>다음 목적지는 2장 「기관의 벽」입니다. 현재 데모는 여기까지 플레이할 수 있습니다.':'이번 손실도 다음 판단의 근거가 됩니다. 투자 지식은 다음 도전에 남습니다.'}</p><div class="stat-grid"><div><strong>${fmtTime(game.totalTime)}</strong><small>플레이 시간</small></div><div><strong>${game.kills}</strong><small>처치한 적</small></div><div><strong>+${e.knowledge}</strong><small>투자 지식</small></div></div><p>보유 투자 지식 ${progress.knowledge} · 다음 시작 체력 ${100+Math.min(20,progress.knowledge*2)}<br>이번 포트폴리오: ${game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'없음'}</p><div class="modal-actions"><button class="secondary" id="back-title">처음으로</button><button class="primary" id="retry">다시 도전 ↗</button></div>`,'finish');$('retry').onclick=startGame;$('back-title').onclick=backToTitle;
+  showModal(`<span class="eyebrow">${won?'LISTING APPROVED · 상장 승인':'LIQUIDATED · 이번 도전 종료'}</span><h2 id="modal-title">${won?'Small Cap → Mid Cap':'청산되었습니다'}</h2><p>${won?'기관의 벽을 돌파했습니다. 헤지펀드 집행관이 쓰러지고 새로운 상장이 승인되었습니다.<br>1·2장 데모를 완료했습니다.':'이번 손실도 다음 판단의 근거가 됩니다. 투자 지식은 다음 도전에 남습니다.'}</p><div class="stat-grid"><div><strong>${fmtTime(game.totalTime)}</strong><small>플레이 시간</small></div><div><strong>${game.kills}</strong><small>처치한 적</small></div><div><strong>+${e.knowledge}</strong><small>투자 지식</small></div></div><p>보유 투자 지식 ${progress.knowledge} · 다음 시작 체력 ${100+Math.min(20,progress.knowledge*2)}<br>이번 포트폴리오: ${game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'없음'}</p><div class="modal-actions"><button class="secondary" id="back-title">처음으로</button><button class="primary" id="retry">다시 도전 ↗</button></div>`,'finish');$('retry').onclick=startGame;$('back-title').onclick=backToTitle;
  }
 }
+function closeTotems(){if(game.state!=='totems')return;game.state='playing';hideModal();stageMusic.setScene('playing',game.spec.chapter);}
+function openTotems(acquired){if(!loaded||!['playing','totems'].includes(game.state))return;game.state='totems';stageMusic.setScene('reward',game.spec.chapter);inventory(game,showModal,closeTotems,acquired);}
 function showShop(){
  const offers=[CARDS[0],CARDS[1],CARDS[2]];
  showModal(`<span class="eyebrow">07 EXCHANGE · 공칠의 거래소</span><h2 id="modal-title">“살아남아야 다음 장도 보지.”</h2><p>보유 시드 <strong style="color:var(--gold)">${game.player.gold}</strong> · 체력 ${Math.ceil(game.player.hp)} / ${game.player.maxHp}<br>시드는 이번 도전에서만 사용합니다. 종목 효과는 중첩됩니다.</p><div class="cards">${offers.map((c,i)=>cardHTML(c,i,true)).join('')}</div><div class="modal-actions"><button class="secondary" id="buy-heal" ${game.player.gold<35||game.player.hp>=game.player.maxHp?'disabled':''}>체력 40 회복 · ◈ 35</button><button class="primary" id="leave-shop">거래 종료 →</button></div>`,'shop');
@@ -48,13 +53,14 @@ function pauseGame(help=false){
  const fromTitle=game.state==='title';if(!fromTitle)game.state='paused';clearInput();
  const buildText=game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'아직 편입한 종목이 없습니다.';
  showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 점프 / 공중에서 한 번 더</span><span><kbd>X</kbd> 3단 기본 공격 (길게 가능)</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
- $('resume').onclick=()=>{if(!fromTitle)game.state='playing';hideModal();};if($('restart-request'))$('restart-request').onclick=()=>showRestartConfirm();
+ $('resume').onclick=()=>{if(!fromTitle){game.state='playing';stageMusic.setScene('playing',game.spec.chapter);}hideModal();};if($('restart-request'))$('restart-request').onclick=()=>showRestartConfirm();
 }
 function showRestartConfirm(){showModal('<span class="eyebrow">RESTART RUN</span><h2 id="modal-title">이번 도전을 종료할까요?</h2><p>이번 도전에서 모은 시드와 종목은 사라집니다. 이전에 저장된 투자 지식은 유지됩니다.</p><div class="modal-actions"><button class="secondary" id="cancel-restart">돌아가기</button><button class="primary" id="confirm-restart">새로 시작</button></div>','confirm');$('cancel-restart').onclick=()=>pauseGame();$('confirm-restart').onclick=startGame;}
 function startGame(chapter=1){if(!loaded)return;hideModal();clearInput();savedRun=false;game=new Game({onEvent:event,knowledge:progress.knowledge});if(chapter===2){game.promoted=true;game.rank='SMALL CAP';game.setRoom(5,false);} $('screen').classList.add('hidden');for(const id of ['hud','skills'])$(id).classList.remove('hidden');game.start();stageMusic.setScene('playing',game.spec.chapter);stageMusic.resumeFromGesture();canvas.focus({preventScroll:true});audioFX.play('reward');}
-function backToTitle(){hideModal();clearInput();stageMusic.setScene('title',1);game=new Game({onEvent:event,knowledge:progress.knowledge});$('screen').classList.remove('hidden');for(const id of ['hud','skills','boss-hud','leverage','notice','room-toast'])$(id).classList.add('hidden');updateSaveNote();}
+function backToTitle(){$('totem-hud').classList.add('hidden');hideModal();clearInput();stageMusic.setScene('title',1);game=new Game({onEvent:event,knowledge:progress.knowledge});$('screen').classList.remove('hidden');for(const id of ['hud','skills','boss-hud','leverage','notice','room-toast'])$(id).classList.add('hidden');updateSaveNote();}
 function updateSaveNote(){$('save-note').textContent=progress.runs?`누적 ${progress.runs}회 도전 · 투자 지식 ${progress.knowledge} · 시작 체력 +${Math.min(20,progress.knowledge*2)}`:'사망해도 투자 지식은 남습니다.';}
 function bind(){
+ $('totem-open').onclick=()=>openTotems();
  $('start').onclick=startGame;$('start-chapter2').onclick=()=>startGame(2);$('sound').onclick=()=>audioFX.enable();$('music').onclick=()=>{stageMusic.setEnabled(!stageMusic.enabled);$('music').textContent=stageMusic.enabled?'BGM ON':'BGM OFF';$('music').setAttribute('aria-pressed',String(stageMusic.enabled));if(stageMusic.enabled)stageMusic.resumeFromGesture();};$('music-volume').oninput=e=>stageMusic.setVolume(e.currentTarget.value/100);$('help').onclick=()=>pauseGame(true);$('pause').onclick=()=>{if(game.state==='paused'){game.state='playing';hideModal();stageMusic.setScene('playing',game.spec.chapter);}else pauseGame();};
  $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('stage').requestFullscreen();}catch{showNotice('이 브라우저에서는 전체 화면을 사용할 수 없습니다.',3);}};
  document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();game.action(b.dataset.action);canvas.focus({preventScroll:true});}));
@@ -63,6 +69,9 @@ function bind(){
  window.addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(e.key==='Tab'&&!$('modal').classList.contains('hidden')){const bs=[...$('modal').querySelectorAll('button:not(:disabled)')];if(bs.length){if(e.shiftKey&&document.activeElement===bs[0]){e.preventDefault();bs.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===bs.at(-1)){e.preventDefault();bs[0].focus();}}return;}
+  if(e.code==='KeyI'&&!e.repeat){e.preventDefault();if(modalKind==='totems')closeTotems();else openTotems();return;}
+  if(e.code==='Escape'&&modalKind==='relic_choice'){e.preventDefault();game.chooseRelic('leave');return;}
+  if(e.code==='Escape'&&modalKind==='totems'){e.preventDefault();closeTotems();return;}
   if(e.code==='Escape'){e.preventDefault();if(modalKind==='pause')$('resume')?.click();else if(game.state==='playing')pauseGame();else if(modalKind==='shop')game.closeShop();return;}
   if(e.code==='Slash'&&!e.repeat){e.preventDefault();pauseGame(true);return;}
   if(modalKind==='reward'&&/^Digit[123]$/.test(e.code)){e.preventDefault();const card=modalCards[Number(e.code.at(-1))-1];if(card)game.chooseReward(card.id);return;}
@@ -106,7 +115,7 @@ function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math
 function label(text,x,y,color='#d4dfe7',size=12,align='center'){ctx.save();ctx.font=`600 ${size}px "Noto Sans KR", sans-serif`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillStyle='#060b13';ctx.fillText(text,Math.round(x+1),Math.round(y+2));ctx.fillStyle=color;ctx.fillText(text,Math.round(x),Math.round(y));ctx.restore();}
 function drawBackground(cam,time){
  ctx.fillStyle='#101a29';ctx.fillRect(0,0,1280,720);
- if(assets.alley){const image=assets.alley;const w=1750,h=985;const drift=cam*.16;ctx.drawImage(image,-drift,-55,w,h);if(drift>180)ctx.drawImage(image,w-drift-1,-55,w,h);}
+ if(assets.alley){const image=game.spec.chapter===2?assets.institution:assets.alley;const w=1750,h=985;const drift=cam*.16;ctx.drawImage(image,-drift,-55,w,h);if(drift>180)ctx.drawImage(image,w-drift-1,-55,w,h);}
  if(game.room===4)rect(0,0,1280,720,'#36152424');
  const fog=ctx.createLinearGradient(0,430,0,720);fog.addColorStop(0,'#07111d00');fog.addColorStop(1,'#050b13a8');ctx.fillStyle=fog;ctx.fillRect(0,430,1280,290);
  // Ambient dust is a lightweight particle effect, kept away from combat silhouettes.
@@ -142,14 +151,14 @@ function render(){
  drawBackground(cam,game.t);ctx.save();const shake=reducedMotion?0:game.shake;ctx.translate(-Math.round(cam)+(Math.random()-.5)*shake,(Math.random()-.5)*shake*.5);
  for(const p of game.platforms)drawPlatform(p);
  if(title){sprite('hero',0,920,620,100,1);sprite('rubble',0,1300,620,105,-1);sprite('ghost',0,1480,434,110,-1);}
- else{drawExit();if(game.spec.kind==='shop')drawShop();for(const e of game.enemies)drawEnemy(e);drawHero();drawEffects();}
+ else{drawRelic(game,ctx);drawExit();if(game.spec.kind==='shop')drawShop();for(const e of game.enemies)drawEnemy(e);drawHero();drawEffects();}
  ctx.restore();
  if(game.freeze>0){rect(0,0,1280,720,'#5284a91c');ctx.strokeStyle='#84c9ed88';ctx.lineWidth=5;ctx.strokeRect(3,3,1274,714);label('TRADING HALT',640,510,'#bdeaff',16);}
  const vignette=ctx.createRadialGradient(640,380,270,640,350,750);vignette.addColorStop(0,'#01050b00');vignette.addColorStop(1,'#01050b75');ctx.fillStyle=vignette;ctx.fillRect(0,0,1280,720);
 }
-function updateHUD(){const p=game.player;$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('hp-text').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;$('profit-fill').style.width=`${p.profit}%`;$('profit-text').textContent=`${Math.floor(p.profit)}%`;$('gold').textContent=String(p.gold);$('room-number').textContent=`${String(game.spec.localRoom).padStart(2,'0')} / 05`;$('rank').textContent=game.state==='victory'?'SMALL CAP':'PENNY STOCK';const m=MARKETS[game.market];$('market-name').textContent=m.name;$('market-name').style.color=m.color;$('market-detail').textContent=m.detail;$('market-warning').textContent=game.marketClock>game.marketPeriod-4?`${Math.ceil(game.marketPeriod-game.marketClock)}초 후 ${MARKETS[(game.market+1)%3].name}`:'';
+function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('hp-text').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;$('profit-fill').style.width=`${p.profit}%`;$('profit-text').textContent=`${Math.floor(p.profit)}%`;$('gold').textContent=String(p.gold);$('room-number').textContent=`${String(game.spec.localRoom).padStart(2,'0')} / 05`;$('rank').textContent=game.state==='victory'?'SMALL CAP':'PENNY STOCK';const m=MARKETS[game.market];$('market-name').textContent=m.name;$('market-name').style.color=m.color;$('market-detail').textContent=m.detail;$('market-warning').textContent=game.marketClock>game.marketPeriod-4?`${Math.ceil(game.marketPeriod-game.marketClock)}초 후 ${MARKETS[(game.market+1)%3].name}`:'';
  const alive=game.enemies.filter(e=>!e.dead).length;$('enemy-count').textContent=game.spec.kind==='shop'?'안전 구역':alive?`남은 적 ${alive}`:'구역 정리 완료';
- const boss=game.enemies.find(e=>e.type==='boss');if(boss){$('boss-fill').style.width=`${Math.max(0,boss.hp)/boss.maxHp*100}%`;$('boss-phase').textContent=boss.hp<boss.maxHp*.5?'PHASE 02':'PHASE 01';}
+ const boss=game.enemies.find(e=>e.boss);if(boss){$('boss-fill').style.width=`${Math.max(0,boss.hp)/boss.maxHp*100}%`;$('boss-phase').textContent=boss.hp<boss.maxHp*.5?'PHASE 02':'PHASE 01';}
  const skillList=[['profit',p.profitCD,'수익 25 이상'],['leverage',p.leverageCD,'8초 / 피해 ×1.65'],['circuit',p.circuitCD,`적 ${2+game.stats.circuitExtra}초 정지`]];
  for(const [name,cd,desc]of skillList){const b=$(`skill-${name}`);b.classList.toggle('cooldown',cd>0);b.classList.toggle('ready',cd<=0&&(name!=='profit'||p.profit>=25));b.querySelector('small').textContent=cd>0?`${Math.ceil(cd)}초`:desc;}
  $('leverage').classList.toggle('hidden',p.leverage<=0||game.state==='title');if(p.leverage>0)$('leverage').textContent=`레버리지 ${p.leverage.toFixed(1)}초 · 처치 ${p.leverageKills}/2 또는 피해 ${Math.floor(p.leverageDamage)}/160`;
