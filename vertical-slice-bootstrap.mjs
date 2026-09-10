@@ -1,11 +1,13 @@
-import {Game} from './engine.mjs';
+import {Game,CARDS} from './engine.mjs';
 import {enableVerticalSlice} from './vertical-slice-mode.mjs';
 import {enableEliteSlice} from './vertical-slice-elite.mjs';
 import {enableBossSlice} from './vertical-slice-boss.mjs';
+import {enableBalanceSlice} from './vertical-slice-balance.mjs';
 
 enableVerticalSlice(Game);
 enableEliteSlice(Game);
 enableBossSlice(Game);
+enableBalanceSlice(Game,CARDS);
 
 function applySlicePresentation(){
  const chapter2=document.getElementById('start-chapter2');
