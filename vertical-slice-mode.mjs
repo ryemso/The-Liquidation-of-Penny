@@ -39,6 +39,61 @@ export function enableVerticalSlice(GameClass){
   return true;
  }
 
+ function resetCrossroadsLesson(game){
+  game.vsCrossroads={bombPrompted:false,ghostPrompted:false,bombResponse:false,ghostResponse:false,complete:false};
+ }
+
+ function nearbyThreat(game,type){
+  const enemy=game.enemies.find(e=>!e.dead&&e.type===type&&e.activated);
+  if(!enemy)return null;
+  const distance=Math.abs((game.player.x+game.player.w/2)-(enemy.x+enemy.w/2));
+  return {enemy,distance};
+ }
+
+ function registerCrossroadsResponse(game,name){
+  if(game.room!==1||!game.vsCrossroads)return;
+  const lesson=game.vsCrossroads;
+  const bomb=nearbyThreat(game,'bomb');
+  const ghost=nearbyThreat(game,'ghost');
+
+  if(!lesson.bombResponse&&bomb&&bomb.distance<260&&['windup','charge'].includes(bomb.enemy.state)){
+   lesson.bombResponse=true;
+   game.log?.add?.('hazard_response',{chapter:1,room:2,threat:'bomb',action:name});
+   game.emit('notice',{text:'손절 대응 성공 · 폭발 예고가 보이면 범위 밖으로 빠지는 습관을 유지하세요.',duration:3});
+  }
+
+  const hostileShot=game.projectiles?.some?.(p=>Math.hypot(p.x-(game.player.x+15),p.y-(game.player.y+28))<280);
+  if(!lesson.ghostResponse&&ghost&&ghost.distance<560&&(ghost.enemy.state==='windup'||hostileShot)){
+   lesson.ghostResponse=true;
+   game.log?.add?.('hazard_response',{chapter:1,room:2,threat:'ghost',action:name});
+   game.emit('notice',{text:'원거리 대응 성공 · 조준을 확인한 뒤 점프나 대시로 탄선을 벗어나세요.',duration:3});
+  }
+ }
+
+ function updateCrossroadsLesson(game){
+  if(game.room!==1||game.state!=='playing'||!game.vsCrossroads)return;
+  const lesson=game.vsCrossroads;
+  const bomb=game.enemies.find(e=>!e.dead&&e.type==='bomb');
+  const ghost=game.enemies.find(e=>!e.dead&&e.type==='ghost');
+
+  if(!lesson.bombPrompted&&bomb?.activated&&['windup','charge'].includes(bomb.state)){
+   lesson.bombPrompted=true;
+   game.emit('notice',{text:'위험 신호 · 폭탄의 붉은 예고가 뜨면 C 점프 또는 Z 대시로 이탈하세요.',duration:4});
+  }
+  if(!lesson.ghostPrompted&&ghost?.activated&&ghost.state==='windup'){
+   lesson.ghostPrompted=true;
+   game.emit('notice',{text:'원거리 신호 · 공매도 유령이 조준하면 발사 전에 위치를 바꾸세요.',duration:4});
+  }
+
+  const bombGone=!game.enemies.some(e=>e.type==='bomb'&&!e.dead);
+  const ghostGone=!game.enemies.some(e=>e.type==='ghost'&&!e.dead);
+  if(!lesson.complete&&bombGone&&ghostGone){
+   lesson.complete=true;
+   game.log?.add?.('crossroads_training_complete',{chapter:1,room:2,bomb_response:lesson.bombResponse,ghost_response:lesson.ghostResponse});
+   game.emit('notice',{text:'손절 교차로 학습 완료 · 근접 적과 원거리 위협이 겹칠 때 우선순위를 판단하세요.',duration:4});
+  }
+ }
+
  GameClass.prototype.start=function(){
   const result=originalStart.call(this);
   if(this.room===0){
@@ -61,6 +116,8 @@ export function enableVerticalSlice(GameClass){
   const tutorial=this.vsTutorial;
   const room=this.room;
   const canProfit=Boolean(room===0&&tutorial?.step===4&&this.player.profit>=25&&this.player.profitCD<=0);
+
+  if(room===1&&(name==='jump'||name==='dash'))registerCrossroadsResponse(this,name);
 
   if(name==='interact'&&this.state==='playing'&&this.room===4){
    const p=this.player;
@@ -90,6 +147,7 @@ export function enableVerticalSlice(GameClass){
   if(this.room===0&&this.state==='playing'&&tutorial&&!tutorial.complete&&tutorial.step===0){
    if(Math.abs(this.player.x-tutorial.startX)>=90)advanceTutorial(this,0,'move');
   }
+  updateCrossroadsLesson(this);
   return result;
  };
 
@@ -100,10 +158,11 @@ export function enableVerticalSlice(GameClass){
   }
   const result=originalSetRoom.call(this,index,announce);
   if(index===0)resetTutorial(this);
+  if(index===1)resetCrossroadsLesson(this);
   if(!announce)return result;
   const guidance={
    0:'첫 거래 구역 · 기본 조작을 순서대로 익힌 뒤 적을 정리하세요.',
-   1:'손절 교차로 · 폭탄의 경고 범위와 공매도 유령의 투사체를 보고 회피하세요.',
+   1:'손절 교차로 · 잡주 → 폭탄 → 공매도 유령 순으로 위협이 겹칩니다. 예고를 보고 회피하세요.',
    2:'공칠의 거래소 · 중앙 교환소에서 ↑. 시드를 회복과 종목 편입에 사용할 수 있습니다.',
    3:'폐쇄 거래소 · 상층 보관함과 선택형 엘리트 도전은 위험하지만 더 큰 보상을 줍니다.',
    4:'작전세력 소굴 · 보스 패턴을 읽고 살아남아 SMALL CAP 승격을 완료하세요.'
