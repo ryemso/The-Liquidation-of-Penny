@@ -1,9 +1,11 @@
 import {Game} from './engine.mjs';
 import {enableVerticalSlice} from './vertical-slice-mode.mjs';
 import {enableEliteSlice} from './vertical-slice-elite.mjs';
+import {enableBossSlice} from './vertical-slice-boss.mjs';
 
 enableVerticalSlice(Game);
 enableEliteSlice(Game);
+enableBossSlice(Game);
 
 function applySlicePresentation(){
  const chapter2=document.getElementById('start-chapter2');
