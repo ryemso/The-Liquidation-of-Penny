@@ -12,6 +12,10 @@ const newGame=()=>{
  return {game,events};
 };
 
+const step=(game,seconds,input={})=>{
+ for(let i=0;i<Math.ceil(seconds*120);i++)game.update(1/120,input);
+};
+
 test('vertical slice blocks progression beyond chapter one',()=>{
  const {game}=newGame();
  game.setRoom(4,false);
@@ -37,4 +41,33 @@ test('locked boss exit cannot end the slice early',()=>{
  game.player.x=game.width-100;
  game.action('interact');
  assert.equal(game.state,'playing');
+});
+
+test('room one tutorial advances movement, jump, attack, dash, then profit in order',()=>{
+ const {game,events}=newGame();
+ assert.equal(game.vsTutorial.step,0);
+ step(game,.5,{right:true});
+ assert.equal(game.vsTutorial.step,1);
+ game.action('jump');
+ assert.equal(game.vsTutorial.step,2);
+ game.action('attack');
+ assert.equal(game.vsTutorial.step,3);
+ game.player.dashCD=0;
+ game.action('dash');
+ assert.equal(game.vsTutorial.step,4);
+ game.player.profit=25;
+ game.player.profitCD=0;
+ game.action('profit');
+ assert.equal(game.vsTutorial.complete,true);
+ assert.ok(events.some(event=>event.type==='notice'&&/기초 거래 완료/.test(event.text)));
+});
+
+test('room one tutorial does not accept profit before the required profit threshold',()=>{
+ const {game}=newGame();
+ game.vsTutorial.step=4;
+ game.player.profit=24;
+ game.player.profitCD=0;
+ game.action('profit');
+ assert.equal(game.vsTutorial.step,4);
+ assert.equal(game.vsTutorial.complete,false);
 });
