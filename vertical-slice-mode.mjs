@@ -5,6 +5,8 @@ export function enableVerticalSlice(GameClass){
  const originalFinish=GameClass.prototype.finish;
  const originalStart=GameClass.prototype.start;
  const originalUpdate=GameClass.prototype.update;
+ const originalBuy=GameClass.prototype.buy;
+ const originalCloseShop=GameClass.prototype.closeShop;
 
  Object.defineProperty(GameClass.prototype,'__chapterOneVerticalSlice',{value:true,configurable:true});
 
@@ -94,6 +96,10 @@ export function enableVerticalSlice(GameClass){
   }
  }
 
+ function resetShopPlan(game){
+  game.vsShop={stockPurchase:null,healPurchased:false,enteredGold:game.player.gold,enteredHp:game.player.hp};
+ }
+
  GameClass.prototype.start=function(){
   const result=originalStart.call(this);
   if(this.room===0){
@@ -110,6 +116,47 @@ export function enableVerticalSlice(GameClass){
    this.rank='SMALL CAP';
    this.log?.add?.('vertical_slice_complete',{chapter:1,room:this.room+1,rank:this.rank});
   }
+ };
+
+ GameClass.prototype.buy=function(id){
+  if(this.room!==2||this.state!=='shop')return originalBuy.call(this,id);
+  if(!this.vsShop)resetShopPlan(this);
+  const plan=this.vsShop;
+
+  if(id!=='heal'&&plan.stockPurchase){
+   this.emit('notice',{text:`이미 ${plan.stockPurchase} 종목을 편입했습니다. 남은 시드는 회복에 쓰거나 보존하세요.`,duration:3});
+   return false;
+  }
+  if(id==='heal'&&plan.healPurchased){
+   this.emit('notice',{text:'이번 거래소의 응급 회복은 한 번만 사용할 수 있습니다.',duration:3});
+   return false;
+  }
+
+  const beforeGold=this.player.gold;
+  const beforeHp=this.player.hp;
+  const success=originalBuy.call(this,id);
+  if(!success)return false;
+
+  if(id==='heal')plan.healPurchased=true;
+  else plan.stockPurchase=id;
+  this.log?.add?.('shop_purchase_decision',{
+   chapter:1,room:3,item:id,cost:beforeGold-this.player.gold,
+   hp_before:beforeHp,hp_after:this.player.hp,gold_after:this.player.gold
+  });
+  if(id==='heal')this.emit('notice',{text:'체력 회복 선택 · 생존 안정성을 샀습니다. 남은 시드와 종목 선택을 비교하세요.',duration:3});
+  else this.emit('notice',{text:'종목 편입 완료 · 이번 거래소에서는 종목 1개만 편입할 수 있습니다.',duration:3});
+  return true;
+ };
+
+ GameClass.prototype.closeShop=function(){
+  if(this.room===2&&this.state==='shop'){
+   if(!this.vsShop)resetShopPlan(this);
+   this.log?.add?.('shop_exit_decision',{
+    chapter:1,room:3,stock:this.vsShop.stockPurchase,healed:this.vsShop.healPurchased,
+    gold_left:this.player.gold,hp:this.player.hp,max_hp:this.player.maxHp
+   });
+  }
+  return originalCloseShop.call(this);
  };
 
  GameClass.prototype.action=function(name){
@@ -159,11 +206,12 @@ export function enableVerticalSlice(GameClass){
   const result=originalSetRoom.call(this,index,announce);
   if(index===0)resetTutorial(this);
   if(index===1)resetCrossroadsLesson(this);
+  if(index===2)resetShopPlan(this);
   if(!announce)return result;
   const guidance={
    0:'첫 거래 구역 · 기본 조작을 순서대로 익힌 뒤 적을 정리하세요.',
    1:'손절 교차로 · 잡주 → 폭탄 → 공매도 유령 순으로 위협이 겹칩니다. 예고를 보고 회피하세요.',
-   2:'공칠의 거래소 · 중앙 교환소에서 ↑. 시드를 회복과 종목 편입에 사용할 수 있습니다.',
+   2:'공칠의 거래소 · 종목은 1개만 편입할 수 있습니다. 공격 강화, 생존 강화, 회복 중 다음 두 방에 필요한 선택을 하세요.',
    3:'폐쇄 거래소 · 상층 보관함과 선택형 엘리트 도전은 위험하지만 더 큰 보상을 줍니다.',
    4:'작전세력 소굴 · 보스 패턴을 읽고 살아남아 SMALL CAP 승격을 완료하세요.'
   };
