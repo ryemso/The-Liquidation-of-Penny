@@ -1,7 +1,7 @@
 export class RunLog {
  constructor(game){this.game=game;this.runId=globalThis.crypto?.randomUUID?.()||`run-${Date.now()}-${Math.random().toString(36).slice(2)}`;this.events=[];this.seq=0;this.started=false;this.ended=false;}
  add(event,data={}){if(!this.started)return;const g=this.game;this.events.push({schema_version:1,run_id:this.runId,sequence:++this.seq,event,wall_time:new Date().toISOString(),time:+g.totalTime.toFixed(3),stage_id:g.room+1,chapter:g.spec?.chapter,hp:Math.ceil(g.player.hp),market:g.market,totems:g.totems.slots.filter(Boolean),...data});if(this.events.length>30000)this.events.shift();}
- start(){if(this.started)return;this.started=true;this.add('run_start',{build:'chapter3-totems16'});this.stageStart();}
+ start(){if(this.started)return;this.started=true;this.add('run_start',{build:'chapter4-totems16'});this.stageStart();}
  stageStart(){this.stageAt=this.game.totalTime;this.add('stage_start',{room_name:this.game.spec.name,room_kind:this.game.spec.kind});}
  end(reason){if(this.ended||!this.started)return;this.ended=true;this.add('run_end',{reason});}
  export(){return {schema_version:1,run_id:this.runId,truncated:this.seq>this.events.length,events:this.events,summary:summarize(this.events)};}
