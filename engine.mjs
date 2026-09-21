@@ -1,3 +1,4 @@
+import {terrainFor,collideWalls} from './terrain.mjs';
 import {RunLog} from './analytics.mjs';
 import {TotemSystem,TOTEMS} from './totems.mjs';
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -44,10 +45,10 @@ export const ROOM_SPECS=[
 ].map((room,i)=>({...room,chapter:Math.floor(i/5)+1,chapterName:['잡주의 골목','기관의 벽','알고리즘의 심장','중앙은행','시장 그 자체'][Math.floor(i/5)],localRoom:i%5+1}));
 // Semi-solid ledges permit jumping from below. Swept foot crossing prevents tunneling.
 export function moveBody(body,dt,platforms,width){
- const oldBottom=body.y+body.h;
+ const oldBottom=body.y+body.h,oldX=body.x,oldY=body.y;
  body.x=clamp(body.x+body.vx*dt,8,width-body.w-8);
  body.vy=Math.min(body.vy+1560*dt,980);
- body.y+=body.vy*dt;body.grounded=false;
+ body.y+=body.vy*dt;body.grounded=false;collideWalls(body,oldX,oldY,platforms.filter(p=>p.solid));
  if(body.vy>=0){
   let top=Infinity;
   for(const p of platforms)if(oldBottom<=p.y+.5&&body.y+body.h>=p.y&&body.x+body.w>p.x+2&&body.x<p.x+p.w-2)top=Math.min(top,p.y);
@@ -59,14 +60,15 @@ export class Game{
  constructor({random=Math.random,onEvent=()=>{},knowledge=0}={}){
   this.random=random;this.onEvent=onEvent;this.knowledge=knowledge;this.state='title';this.enemies=[];this.projectiles=[];this.hazards=[];this.particles=[];this.texts=[];this.effects=[];this.room=0;this.t=0;this.camera=0;this.shake=0;this.market=0;this.marketClock=0;this.freeze=0;this.hitstop=0;this.totalTime=0;this.kills=0;this.spent=0;this.build=[];this.clearedRooms=0;this.promoted=false;this.rank='PENNY STOCK';this.stats={atk:18,speed:255,crit:.05,armor:0,dividend:0,profitHeal:0,profitGain:0,short:0,circuitExtra:0,circuitReduce:0,dashFactor:1,guardPierce:0,circuitHeal:0};this.player=this.newPlayer();this.totems=new TotemSystem(this);this.setRoom(0,false);this.log=new RunLog(this);
  }
- newPlayer(){const hp=100+Math.min(20,this.knowledge*2);return{x:120,y:540,w:30,h:56,vx:0,vy:0,grounded:false,facing:1,hp,maxHp:hp,inv:0,jumps:0,coyote:0,jumpBuffer:0,attack:0,attackCD:0,combo:0,comboClock:0,dash:0,dodgeWindow:0,dashCD:0,profit:0,profitCD:0,leverageCD:0,circuitCD:0,hurt:0,gold:30,leverage:0,leverageDamage:0,leverageKills:0};}
+ newPlayer(){const hp=100+Math.min(20,this.knowledge*2);return{x:120,y:540,w:21,h:39.2,vx:0,vy:0,grounded:false,facing:1,hp,maxHp:hp,inv:0,jumps:0,coyote:0,jumpBuffer:0,attack:0,attackCD:0,combo:0,comboClock:0,dash:0,dodgeWindow:0,dashCD:0,profit:0,profitCD:0,leverageCD:0,circuitCD:0,hurt:0,gold:30,leverage:0,leverageDamage:0,leverageKills:0};}
  emit(type,data={}){this.onEvent({type,...data});}
  start(){this.state='playing';this.log.start();this.emit('room',{room:this.spec});this.emit('notice',{text:'← → 이동 · C 2단 점프 · X 공격 · Z 대시',duration:7});}
  setRoom(index,announce=true){
   if(!ROOM_SPECS[index])return;
   if(this.log?.started&&this.spec.kind==='shop'&&!this.rewardGiven){this.rewardGiven=true;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});}if(this.log?.started)this.log.add('stage_exit',{duration:this.totalTime-this.log.stageAt,cleared:this.rewardGiven||this.spec.kind==='shop'});this.totems.roomChanged();this.room=index;this.spec=ROOM_SPECS[index];this.width=this.spec.width;this.platforms=[{x:0,y:620,w:this.width,h:100,ground:true},...this.spec.platforms.map(([x,y,w])=>({x,y,w,h:18}))];
+  this.terrain=terrainFor(this.spec,index);this.platforms.push(...this.terrain.walls,...this.terrain.ledges);
   this.marketPeriod=[24,20,18,18,16][this.spec.chapter-1];this.marketClock=Math.min(this.marketClock,this.marketPeriod-4);this.pressureClock=0;
-  this.enemies=this.spec.enemies.map(([type,x,bottom,elite])=>this.makeEnemy(type,x,bottom,elite));this.projectiles=[];this.hazards=[];this.effects=[];this.particles=[];this.texts=[];this.doorOpen=this.spec.kind==='shop';this.rewardGiven=false;this.clearTimer=-1;this.camera=0;this.freeze=0;this.hitstop=0;this.shopVisited=false;
+  this.enemies=[...this.spec.enemies,...this.terrain.extra].map(([type,x,bottom,elite])=>this.makeEnemy(type,x,bottom,elite));this.projectiles=[];this.hazards=[];this.effects=[];this.particles=[];this.texts=[];this.doorOpen=this.spec.kind==='shop';this.rewardGiven=false;this.clearTimer=-1;this.camera=0;this.freeze=0;this.hitstop=0;this.shopVisited=false;
   Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,dodgeWindow:0,attack:0,grounded:false,jumpBuffer:0});
   const relicRooms={0:0,1:1,3:2,5:3,6:4,8:0,10:5,11:8,13:15,15:6,16:10,18:12,20:7,21:11,23:14};const ri=relicRooms[index];
   const ledge=this.platforms.filter(p=>!p.ground).at(-1);
@@ -91,7 +93,7 @@ export class Game{
  enterNextChapter(){if(this.room===4){this.enterChapterTwo();return;}if(![9,14,19].includes(this.room)||this.state!=='chapter')return;const next=this.room+1;this.rank=this.room===9?'MID CAP':this.room===14?'BLUE CHIP':'MEGA CAP';this.player.maxHp+=20;this.heal(45);this.stats.atk+=6;this.player.profit=50;this.state='playing';this.emit('resume');this.setRoom(next);}
  makeEnemy(type,x,bottom,elite=false){
   const data={market:{w:148,h:138,hp:2900,speed:50,damage:25,gold:500,boss:true},central:{w:148,h:138,hp:2300,speed:45,damage:24,gold:400,boss:true},algorithm:{w:110,h:110,hp:1850,speed:65,damage:20,gold:320,boss:true},rubble:{w:60,h:46,hp:52,speed:67,damage:12,gold:20},bomb:{w:50,h:50,hp:44,speed:45,damage:22,gold:24},ghost:{w:42,h:60,hp:46,speed:47,damage:10,gold:26,flying:true},boss:{w:110,h:138,hp:940,speed:55,damage:17,gold:170,boss:true},shield:{w:64,h:62,hp:105,speed:54,damage:17,gold:34,armored:true},drone:{w:48,h:42,hp:70,speed:65,damage:13,gold:32,flying:true},enforcer:{w:148,h:138,hp:1500,speed:53,damage:22,gold:250,boss:true,armored:true}}[type];
-  const e={id:++this.enemySerial|| (this.enemySerial=1),...data,type,x,y:bottom-data.h,vx:0,vy:0,facing:-1,grounded:!data.flying,elite,inv:0,flash:0,state:'idle',timer:.6+this.random(),anim:0,spawnX:x,spawnY:bottom-data.h,attackNo:0,activated:false,dead:false};if(elite){e.hp*=2;e.damage*=1.25;e.gold*=2;e.w*=1.15;e.h*=1.15;e.y=bottom-e.h;}e.maxHp=e.hp;return e;
+  const e={id:++this.enemySerial|| (this.enemySerial=1),...data,type,x,y:bottom-data.h,vx:0,vy:0,facing:-1,grounded:!data.flying,elite,inv:0,flash:0,state:'idle',timer:.6+this.random(),anim:0,spawnX:x,spawnY:bottom-data.h,attackNo:0,activated:false,dead:false};if(elite){e.hp*=2;e.damage*=1.25;e.gold*=2;e.w*=1.15;e.h*=1.15;e.y=bottom-e.h;}const feet=e.y+e.h;e.w*=.7;e.h*=.7;e.y=feet-e.h;e.maxHp=e.hp;return e;
  }
  action(name){
   if(this.state!=='playing')return;
@@ -160,7 +162,7 @@ export class Game{
  }
  hurt(amount,sourceX,kind='attack',source=null){
   if(kind==='attack'&&source?.attackWeak>0)amount*=.75;
-  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind,source_type:source?.type??(kind==='hazard'?'environment':null)});p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
+  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&kind!=='spikes'&&kind!=='mine'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind,source_type:source?.type??(kind==='hazard'?'environment':null)});p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
  }
  heal(amount){if(amount<=0)return;const p=this.player,actual=Math.min(p.maxHp-p.hp,amount);p.hp+=actual;if(actual>0)this.floatText(p.x,p.y-20,`+${actual} HP`,'#88d4ac',15);}
  settleLeverage(){const p=this.player;const ok=p.leverageDamage>=160||p.leverageKills>=2;p.leverage=0;if(ok){p.gold+=18;this.emit('notice',{text:'상환 성공 · 추가 시드 +18',duration:3});this.emit('sound',{name:'reward'});}else{const cost=Math.min(18,Math.max(0,p.hp-1));p.hp-=cost;this.log.add('health_cost',{amount:cost,reason:'leverage_repayment'});this.floatText(p.x,p.y-20,'상환 −18 HP','#ff9b7a',16);this.emit('notice',{text:'레버리지 상환 · 체력 −18',duration:3});}}
@@ -196,6 +198,7 @@ export class Game{
   else if(p.hurt<=0){const dir=(input.right?1:0)-(input.left?1:0);p.vx=dir*this.stats.speed*(p.attack>0?.65:1);if(dir)p.facing=dir;}
   else p.vx*=.91;
   moveBody(p,dt,this.platforms,this.width);
+  this.updateTerrain(dt);if(this.state!=='playing')return;
   if(this.checkRelicPickup())return;
   if(p.y>800){p.y=500;p.x=120;p.vy=0;this.hurt(15,p.x-1,'fall');}
   const target=clamp(p.x+p.w/2-500,0,Math.max(0,this.width-1280));this.camera+=(target-this.camera)*Math.min(1,dt*7);this.shake=Math.max(0,this.shake-dt*24);
@@ -211,7 +214,17 @@ export class Game{
    if(this.clearTimer<=0){this.rewardGiven=true;this.clearedRooms++;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});if(p.leverage>0)this.settleLeverage();if(this.spec.kind==='boss'){this.doorOpen=true;this.heal(25);this.emit('notice',{text:`${this.spec.bossName} 격파 · 오른쪽 출구 ↑`,duration:7});}else{this.state='reward';const cards=this.rewardOptions();this.currentOffers=cards.map(c=>c.id);this.log.add('reward_presented',{offers:this.currentOffers});this.emit('reward',{cards});}}
   }
  }
+ updateTerrain(dt){
+  const p=this.player;
+  for(const t of this.terrain.traps){
+   if(t.type==='spikes'){if(overlap(p,t))this.hurt(12,t.x,'spikes');continue;}
+   if(t.spent)continue;
+   if(!t.armed&&Math.hypot(p.x+p.w/2-t.x-12,p.y+p.h-t.y)<65){t.armed=true;t.timer=.8;this.log.add('trap_triggered',{trap_id:t.id});this.emit('notice',{text:'지뢰 점멸 · 폭발 범위에서 벗어나세요!',duration:1});}
+   else if(t.armed){t.timer-=dt;if(t.timer<=0){t.spent=true;this.effects.push({type:'explosion',x:t.x+12,y:t.y,life:.5,max:.5});this.emit('sound',{name:'explosion'});if(Math.hypot(p.x+p.w/2-t.x-12,p.y+p.h/2-t.y)<100)this.hurt(22,t.x,'mine');}}
+  }
+ }
  updateEnemy(e,dt){
+  if(e.grounded&&this.terrain.walls.some(w=>Math.abs((e.x+e.w/2)-(w.x+w.w/2))<e.w+85)){e.vy=-580;e.grounded=false;}
   const p=this.player;e.anim+=dt;e.timer-=dt;const dx=p.x+p.w/2-(e.x+e.w/2),dy=(p.y+p.h/2)-(e.y+e.h/2),dist=Math.abs(dx);
   if(!e.activated){if(dist<610){e.activated=true;this.log.add('enemy_encounter',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});}else return;}
   if(e.type==='market'){this.updateMarket(e,dt,dx);return;}
