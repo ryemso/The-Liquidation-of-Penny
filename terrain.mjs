@@ -5,6 +5,7 @@ export function terrainFor(spec,index){
  const traps=[{id:'spikes-1',type:'spikes',x:760+offset,y:606,w:72,h:14},{id:'mine-1',type:'mine',x:spec.width-470,y:610,w:24,h:10,armed:false,spent:false,timer:0}];
  if(spec.chapter>1)traps.push({id:'spikes-2',type:'spikes',x:spec.width-950,y:606,w:84,h:14});
  const extra=[[spec.chapter===1?'rubble':'shield',320,620],['ghost',spec.width*.52,360],['drone',spec.width-330,400]].slice(0,spec.chapter===1?2:3);
+ extra.push(['ghost',spec.width*.68,350]);
  return {walls,traps,ledges,extra};
 }
 export function collideWalls(body,oldX,oldY,walls){

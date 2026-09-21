@@ -1,3 +1,4 @@
+import {drawTerrain} from './terrain-art.mjs';
 import {inventory,hud as totemHUD,drawRelic,chooseRelic} from './totem-ui.mjs';
 import {Game,MARKETS,CARDS,ROOM_SPECS,clamp} from './engine.mjs';
 import {StageMusic} from './audio.mjs';
@@ -138,13 +139,13 @@ function drawEnemy(e){if(e.dead)return;const x=e.x+e.w/2,bottom=e.y+e.h;const he
  const skinPrefix=game.spec.chapter===3?'algo':game.spec.chapter===4?'bank':game.spec.chapter===5?'market':null;
  const bankSkin=skinPrefix&&!!assets[skinPrefix+'-'+e.type];
  const bankFrame=e.state==='windup'?1:(e.state==='attack'||e.state==='charge')?2:e.state==='recover'?3:0;
- sprite(bankSkin?skinPrefix+'-'+e.type:e.type==='central'?'enforcer':e.type==='algorithm'?'drone':e.type,bankSkin?bankFrame:enemyFrame(e),x,bottom,height*.7*(bankSkin&&e.elite?1.15:1),e.type==='boss'?-e.facing:e.facing,e.flash);
+ sprite(bankSkin?skinPrefix+'-'+e.type:e.type==='central'?'enforcer':e.type==='algorithm'?'drone':e.type,bankSkin?bankFrame:enemyFrame(e),x,bottom,height*.595*(bankSkin&&e.elite?1.15:1),e.type==='boss'?-e.facing:e.facing,e.flash);
  if(e.type!=='boss'&&(e.hp<e.maxHp||e.elite)){const w=e.elite?65:46;rect(x-w/2,e.y-16,w,4,'#121820');rect(x-w/2,e.y-16,w*e.hp/e.maxHp,4,e.elite?'#d8b277':'#bc7273');if(e.elite)label('적대적 인수체',x,e.y-30,'#edca80',11);}}
 function drawHero(){const p=game.player;let frame=0;if(p.hurt>0)frame=7;else if(p.attack>0)frame=6;else if(!p.grounded)frame=p.vy<0?4:5;else if(Math.abs(p.vx)>10)frame=1+Math.floor(game.t*11)%3;
  const x=p.x+p.w/2,bottom=p.y+p.h;
- if(p.dash>0){for(let i=3;i>0;i--)sprite('hero',1,x-p.facing*i*23,bottom,53.2,p.facing,0,.12*(4-i));}
+ if(p.dash>0){for(let i=3;i>0;i--)sprite('hero',1,x-p.facing*i*23,bottom,45.22,p.facing,0,.12*(4-i));}
  if(p.leverage>0){ctx.save();ctx.strokeStyle='#efa46a';ctx.lineWidth=1;ctx.globalAlpha=.4+.2*Math.sin(game.t*14);ctx.beginPath();ctx.ellipse(x,bottom-32,34,48,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
- sprite('hero',frame,x,bottom,53.2,p.facing,0,p.inv>0&&Math.floor(game.t*16)%2===0?.5:1);
+ sprite('hero',frame,x,bottom,45.22,p.facing,0,p.inv>0&&Math.floor(game.t*16)%2===0?.5:1);
 }
 function drawEffects(){
  for(const h of game.hazards){if(h.delay>0){rect(h.x,614,h.w,6,Math.sin(game.t*20)>0?'#ef8376':'#a54a4b');rect(h.x,455,h.w,160,'#e97b6814');label('!',h.x+h.w/2,600,'#ffb294',20);}else{const alpha=Math.min(1,h.life/.45);ctx.save();ctx.globalAlpha=alpha;rect(h.x,455,h.w,165,'#eab07b70');rect(h.x+20,455,h.w-40,165,'#ffd992');ctx.restore();}}
@@ -160,8 +161,8 @@ function drawEffects(){
 function render(){
  ctx.imageSmoothingEnabled=false;const title=game.state==='title',cam=title?300:game.camera;
  drawBackground(cam,game.t);ctx.save();const shake=reducedMotion?0:game.shake;ctx.translate(-Math.round(cam)+(Math.random()-.5)*shake,(Math.random()-.5)*shake*.5);
- for(const p of game.platforms)drawPlatform(p);
- for(const t of game.terrain.traps){if(t.type==='spikes'){for(let x=t.x;x<t.x+t.w;x+=12){ctx.fillStyle='#dfb7a1';ctx.beginPath();ctx.moveTo(x,t.y+t.h);ctx.lineTo(x+6,t.y);ctx.lineTo(x+12,t.y+t.h);ctx.fill();}}else if(!t.spent){rect(t.x,t.y,t.w,t.h,'#514942');rect(t.x+9,t.y-3,6,4,t.armed&&Math.floor(game.t*12)%2?'#ff544e':'#edbd70');if(t.armed){ctx.strokeStyle='#f47662';ctx.beginPath();ctx.ellipse(t.x+12,t.y,100,18,0,0,Math.PI*2);ctx.stroke();}}}
+ for(const p of game.platforms)if(!p.solid)drawPlatform(p);
+ drawTerrain(ctx,game.terrain,game.spec.chapter,game.t);
 
  if(title){sprite('hero',0,920,620,100,1);sprite('rubble',0,1300,620,105,-1);sprite('ghost',0,1480,434,110,-1);}
  else{drawRelic(game,ctx);drawExit();if(game.spec.kind==='shop')drawShop();for(const e of game.enemies)drawEnemy(e);drawHero();drawEffects();}
