@@ -5,12 +5,14 @@ export function drawTerrain(ctx,terrain,chapter,time){
  const box=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h);};
  ctx.save();
  for(const p of terrain.walls){
+
   box(p.x,p.y,p.w,p.h,dark);box(p.x+3,p.y+4,p.w-6,p.h-4,mid);
   for(let y=p.y+8;y<p.y+p.h-6;y+=20){box(p.x+5,y,p.w-10,2,dark);const seam=p.x+(Math.floor((y-p.y)/20)%2?20:42);box(seam,y+2,2,18,dark);}
   box(p.x-2,p.y,p.w+4,5,edge);box(p.x,p.y, p.w,2,accent);box(p.x+4,p.y+6,3,p.h-8,edge);box(p.x+p.w-7,p.y+6,3,p.h-8,dark);
   box(p.x+14,p.y+20,p.w-28,24,dark);box(p.x+17,p.y+23,p.w-34,2,edge);
   for(let i=0;i<3;i++)box(p.x+19+i*9,p.y+29,4,8,accent);
   for(const x of [p.x+7,p.x+p.w-10])for(const y of [p.y+8,p.y+p.h-10])box(x,y,2,2,accent);
+  /*EDGE*/if(p.climbable!==false)for(const x of [p.x,p.x+p.w-2]){box(x,p.y+5,2,p.h-5,edge);for(let y=p.y+12;y<p.y+p.h;y+=18)box(x-1,y,4,3,accent);}
  }
  for(const t of terrain.traps){
   if(t.type==='spikes'){

@@ -1,3 +1,4 @@
+import {wallSide,verticalCamera} from './movement.mjs';
 import {terrainFor,collideWalls} from './terrain.mjs';
 import {RunLog} from './analytics.mjs';
 import {TotemSystem,TOTEMS} from './totems.mjs';
@@ -54,22 +55,22 @@ export function moveBody(body,dt,platforms,width){
   for(const p of platforms)if(p!==body.dropPlatform&&oldBottom<=p.y+.5&&body.y+body.h>=p.y&&body.x+body.w>p.x+2&&body.x<p.x+p.w-2)top=Math.min(top,p.y);
   if(top!==Infinity){body.y=top-body.h;body.vy=0;body.grounded=true;}
  }
- if(body.y<70){body.y=70;body.vy=Math.max(0,body.vy);}
+ if(body.y<(body.worldTop??70)){body.y=body.worldTop??70;body.vy=Math.max(0,body.vy);}
 }
 export class Game{
  constructor({random=Math.random,onEvent=()=>{},knowledge=0}={}){
-  this.random=random;this.onEvent=onEvent;this.knowledge=knowledge;this.state='title';this.enemies=[];this.projectiles=[];this.hazards=[];this.particles=[];this.texts=[];this.effects=[];this.room=0;this.t=0;this.camera=0;this.shake=0;this.market=0;this.marketClock=0;this.freeze=0;this.hitstop=0;this.totalTime=0;this.kills=0;this.spent=0;this.build=[];this.clearedRooms=0;this.promoted=false;this.rank='PENNY STOCK';this.stats={atk:18,speed:255,crit:.05,armor:0,dividend:0,profitHeal:0,profitGain:0,short:0,circuitExtra:0,circuitReduce:0,dashFactor:1,guardPierce:0,circuitHeal:0};this.player=this.newPlayer();this.totems=new TotemSystem(this);this.setRoom(0,false);this.log=new RunLog(this);
+  this.random=random;this.onEvent=onEvent;this.knowledge=knowledge;this.state='title';this.enemies=[];this.projectiles=[];this.hazards=[];this.particles=[];this.texts=[];this.effects=[];this.room=0;this.t=0;this.camera=0;this.cameraY=0;this.shake=0;this.market=0;this.marketClock=0;this.freeze=0;this.hitstop=0;this.totalTime=0;this.kills=0;this.spent=0;this.build=[];this.clearedRooms=0;this.promoted=false;this.rank='PENNY STOCK';this.stats={atk:18,speed:255,crit:.05,armor:0,dividend:0,profitHeal:0,profitGain:0,short:0,circuitExtra:0,circuitReduce:0,dashFactor:1,guardPierce:0,circuitHeal:0};this.player=this.newPlayer();this.totems=new TotemSystem(this);this.setRoom(0,false);this.log=new RunLog(this);
  }
  newPlayer(){const hp=100+Math.min(20,this.knowledge*2);return{x:120,y:540,w:17.85,h:33.32,vx:0,vy:0,grounded:false,facing:1,hp,maxHp:hp,inv:0,jumps:0,coyote:0,jumpBuffer:0,attack:0,attackMove:null,jumpHeld:false,jumpCut:false,attackCD:0,combo:0,comboClock:0,dash:0,dodgeWindow:0,dashCD:0,profit:0,profitCD:0,leverageCD:0,circuitCD:0,hurt:0,gold:30,leverage:0,leverageDamage:0,leverageKills:0};}
  emit(type,data={}){this.onEvent({type,...data});}
  start(){this.state='playing';this.log.start();this.emit('room',{room:this.spec});this.emit('notice',{text:'← → 이동 · C 2단 점프 · X 공격 · Z 대시',duration:7});}
  setRoom(index,announce=true){
   if(!ROOM_SPECS[index])return;
-  if(this.log?.started&&this.spec.kind==='shop'&&!this.rewardGiven){this.rewardGiven=true;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});}if(this.log?.started)this.log.add('stage_exit',{duration:this.totalTime-this.log.stageAt,cleared:this.rewardGiven||this.spec.kind==='shop'});this.totems.roomChanged();this.room=index;this.spec=ROOM_SPECS[index];this.width=this.spec.width;this.platforms=[{x:0,y:620,w:this.width,h:100,ground:true},...this.spec.platforms.map(([x,y,w])=>({x,y,w,h:18}))];
+  if(this.log?.started&&this.spec.kind==='shop'&&!this.rewardGiven){this.rewardGiven=true;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});}if(this.log?.started)this.log.add('stage_exit',{duration:this.totalTime-this.log.stageAt,cleared:this.rewardGiven||this.spec.kind==='shop'});this.totems.roomChanged();this.room=index;this.spec=ROOM_SPECS[index];this.width=this.spec.width;this.worldTop=['shop','boss'].includes(this.spec.kind)?70:-360;this.platforms=[{x:0,y:620,w:this.width,h:100,ground:true},...this.spec.platforms.map(([x,y,w])=>({x,y,w,h:18}))];
   this.terrain=terrainFor(this.spec,index);this.platforms.push(...this.terrain.walls,...this.terrain.ledges);
   this.marketPeriod=[24,20,18,18,16][this.spec.chapter-1];this.marketClock=Math.min(this.marketClock,this.marketPeriod-4);this.pressureClock=0;
-  this.enemies=[...this.spec.enemies,...this.terrain.extra].map(([type,x,bottom,elite])=>this.makeEnemy(type,x,bottom,elite));this.projectiles=[];this.hazards=[];this.effects=[];this.particles=[];this.texts=[];this.doorOpen=this.spec.kind==='shop';this.rewardGiven=false;this.clearTimer=-1;this.camera=0;this.freeze=0;this.hitstop=0;this.shopVisited=false;
-  Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,dodgeWindow:0,attack:0,grounded:false,jumpBuffer:0,dropPlatform:null,attackMove:null,jumpHeld:false,jumpCut:false});
+  this.enemies=[...this.spec.enemies,...this.terrain.extra].map(([type,x,bottom,elite])=>this.makeEnemy(type,x,bottom,elite));this.projectiles=[];this.hazards=[];this.effects=[];this.particles=[];this.texts=[];this.doorOpen=this.spec.kind==='shop';this.rewardGiven=false;this.clearTimer=-1;this.camera=0;this.cameraY=0;this.freeze=0;this.hitstop=0;this.shopVisited=false;
+  Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,dodgeWindow:0,attack:0,grounded:false,jumpBuffer:0,dropPlatform:null,worldTop:this.worldTop,wall:0,wallLock:0,wallSliding:false,attackMove:null,jumpHeld:false,jumpCut:false});
   const relicRooms={0:0,1:1,3:2,5:3,6:4,8:0,10:5,11:8,13:15,15:6,16:10,18:12,20:7,21:11,23:14};const ri=relicRooms[index];
   const ledge=this.platforms.filter(p=>!p.ground).at(-1);
   this.relic=null;this.trialEnemy=null;
@@ -205,25 +206,31 @@ export class Game{
   if(this.hitstop>0){this.hitstop-=dt;return;}
   const p=this.player;
   if(!p.jumpHeld&&p.jumpCut&&p.vy< -250){p.vy=-250;p.jumpCut=false;}
-  for(const k of ['dodgeWindow','inv','hurt','attack','attackCD','comboClock','dashCD','profitCD','leverageCD','circuitCD','jumpBuffer'])p[k]=Math.max(0,p[k]-dt);
+  for(const k of ['wallLock','dodgeWindow','inv','hurt','attack','attackCD','comboClock','dashCD','profitCD','leverageCD','circuitCD','jumpBuffer'])p[k]=Math.max(0,p[k]-dt);
   if(p.leverage>0){p.leverage-=dt;if(p.leverage<=0)this.settleLeverage();}
   if(this.freeze>0)this.freeze=Math.max(0,this.freeze-dt);
   else if(this.spec.kind!=='shop'){this.marketClock+=dt;if(this.marketClock>=this.marketPeriod){this.marketClock-=this.marketPeriod;this.market=(this.market+1)%3;this.emit('market');}}
   p.coyote=p.grounded?.1:Math.max(0,p.coyote-dt);
   if(p.grounded)p.jumps=0;
+  p.wall=wallSide(p,this.platforms);p.wallSliding=false;
+  if(p.jumpBuffer>0&&p.wall&&p.dash<=0&&p.hurt<=0){const away=-p.wall;p.vx=away*310;p.facing=away;p.vy=p.jumpHeld?-550:-300;p.jumpCut=p.jumpHeld;p.wallLock=.16;p.jumps=1;p.jumpBuffer=0;p.coyote=0;p.grounded=false;this.log.add('wall_jump',{side:p.wall});this.emit('sound',{name:'jump'});this.burst(p.x+(p.wall>0?p.w:0),p.y+p.h/2,'#b0bcc5',6);}
   if(p.jumpBuffer>0&&(p.coyote>0||p.jumps<2)){if(!p.grounded&&p.coyote===0&&p.jumps===0)p.jumps=1;p.vy=p.jumpHeld?-580:-250;p.jumpCut=p.jumpHeld;p.jumps++;p.jumpBuffer=0;p.coyote=0;p.grounded=false;this.emit('sound',{name:'jump'});this.burst(p.x+p.w/2,p.y+p.h,'#8394a6',5);}
   if(input.attack)this.attack(input.up?'up':input.down&&!p.grounded?'down':'side');
   this.updateAttack(dt);
   if(p.dash>0){p.dash=Math.max(0,p.dash-dt);p.vx=p.facing*760;p.vy=-25;}
+  else if(p.wallLock>0){}
   else if(p.hurt<=0){const dir=(input.right?1:0)-(input.left?1:0);p.vx=dir*this.stats.speed*(p.attack>0?(p.combo===2?.85:.95):1);if(dir)p.facing=dir;}
   else p.vx*=.91;
   if(p.dropPlatform&&p.y>p.dropPlatform.y+p.dropPlatform.h)p.dropPlatform=null;
+  const toward=(input.right?1:0)-(input.left?1:0);
+  if(p.wall&&toward===p.wall&&p.vy>0&&p.dash<=0&&p.hurt<=0&&p.wallLock<=0){p.wallSliding=true;p.vy=Math.min(p.vy,120-1560*dt);}
   const wasGrounded=p.grounded,landingSpeed=p.vy;moveBody(p,dt,this.platforms,this.width);
   if(!wasGrounded&&p.grounded&&landingSpeed>100){p.jumpCut=false;this.burst(p.x+p.w/2,p.y+p.h,'#8394a6',8);this.effects.push({type:'landing',x:p.x+p.w/2,y:p.y+p.h,life:.15,max:.15});}
+  p.wall=wallSide(p,this.platforms);if(!p.wall||p.grounded)p.wallSliding=false;
   this.updateTerrain(dt);if(this.state!=='playing')return;
   if(this.checkRelicPickup())return;
   if(p.y>800){p.y=500;p.x=120;p.vy=0;this.hurt(15,p.x-1,'fall');}
-  const target=clamp(p.x+p.w/2-500,0,Math.max(0,this.width-1280));this.camera+=(target-this.camera)*Math.min(1,dt*7);this.shake=Math.max(0,this.shake-dt*24);
+  const target=clamp(p.x+p.w/2-500,0,Math.max(0,this.width-1280));this.camera+=(target-this.camera)*Math.min(1,dt*7);this.cameraY=verticalCamera(this.cameraY,p,this.worldTop,dt);this.shake=Math.max(0,this.shake-dt*24);
   if(this.freeze<=0){for(const e of this.enemies)if(!e.dead)this.updateEnemy(e,dt);if(this.spec.pressure&&this.enemies.some(e=>!e.dead)){this.pressureClock+=dt;if(this.pressureClock>8){this.pressureClock=0;for(const offset of [-95,95])this.hazards.push({x:clamp(p.x+offset,40,this.width-100),y:620,w:64,delay:1.3,life:.35,damage:14,hit:false});this.emit('notice',{text:'공매도 경보 · 표시된 바닥에서 벗어나세요',duration:1.8});}}this.updateThreats(dt);}
   for(const e of this.enemies){e.flash=Math.max(0,e.flash-dt);e.inv=Math.max(0,e.inv-dt);}
   for(const fx of this.effects)fx.life-=dt;this.effects=this.effects.filter(f=>f.life>0);

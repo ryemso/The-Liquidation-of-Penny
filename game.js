@@ -56,7 +56,7 @@ function pauseGame(help=false){
  if(!loaded||!game||!['playing','paused','title'].includes(game.state))return;
  const fromTitle=game.state==='title';if(!fromTitle)game.state='paused';clearInput();
  const buildText=game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'아직 편입한 종목이 없습니다.';
- showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 누르는 길이로 높이 조절 · 2단 점프 · ↓+C 내려가기</span><span><kbd>X</kbd> 3단 공격 · ↑+X 위 / 공중 ↓+X 아래</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
+ showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 누르는 길이로 높이 조절 · 2단 점프 · ↓+C 내려가기</span><span><kbd>X</kbd> 3단 공격 · ↑+X 위 / 공중 ↓+X 아래</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>벽 방향 + C</kbd> 벽 점프 · 벽 방향 유지 시 미끄러짐</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
  $('resume').onclick=()=>{if(!fromTitle){game.state='playing';stageMusic.setScene('playing',game.spec.chapter);}hideModal();};if($('restart-request'))$('restart-request').onclick=()=>showRestartConfirm();
 }
 function showRestartConfirm(){showModal('<span class="eyebrow">RESTART RUN</span><h2 id="modal-title">이번 도전을 종료할까요?</h2><p>이번 도전에서 모은 시드와 종목은 사라집니다. 이전에 저장된 투자 지식은 유지됩니다.</p><div class="modal-actions"><button class="secondary" id="cancel-restart">돌아가기</button><button class="primary" id="confirm-restart">새로 시작</button></div>','confirm');$('cancel-restart').onclick=()=>pauseGame();$('confirm-restart').onclick=startGame;}
@@ -142,8 +142,9 @@ function drawEnemy(e){if(e.dead)return;const x=e.x+e.w/2,bottom=e.y+e.h;const he
  const bankFrame=e.state==='windup'?1:(e.state==='attack'||e.state==='charge')?2:e.state==='recover'?3:0;
  sprite(bankSkin?skinPrefix+'-'+e.type:e.type==='central'?'enforcer':e.type==='algorithm'?'drone':e.type,bankSkin?bankFrame:enemyFrame(e),x,bottom,height*.595*(bankSkin&&e.elite?1.15:1),e.type==='boss'?-e.facing:e.facing,e.flash);
  if(e.type!=='boss'&&(e.hp<e.maxHp||e.elite)){const w=e.elite?65:46;rect(x-w/2,e.y-16,w,4,'#121820');rect(x-w/2,e.y-16,w*e.hp/e.maxHp,4,e.elite?'#d8b277':'#bc7273');if(e.elite)label('적대적 인수체',x,e.y-30,'#edca80',11);}}
-function drawHero(){const p=game.player;let frame=0;if(p.hurt>0)frame=7;else if(p.attackMove)frame=p.attackMove.elapsed<.035?0:p.attackMove.elapsed<.14?6:0;else if(!p.grounded)frame=p.vy<0?4:5;else if(Math.abs(p.vx)>10)frame=1+Math.floor(game.t*11)%3;
+function drawHero(){const p=game.player;let frame=0;if(p.hurt>0)frame=7;else if(p.wallSliding)frame=5;else if(p.attackMove)frame=p.attackMove.elapsed<.035?0:p.attackMove.elapsed<.14?6:0;else if(!p.grounded)frame=p.vy<0?4:5;else if(Math.abs(p.vx)>10)frame=1+Math.floor(game.t*11)%3;
  const x=p.x+p.w/2,bottom=p.y+p.h;
+ if(p.wallSliding){rect(p.wall>0?p.x+p.w:p.x-2,p.y+8,2,12,'#d6c3a0');for(let i=0;i<3;i++)rect(p.wall>0?p.x+p.w+1:p.x-3,p.y+18+(game.t*70+i*9)%26,2,3,'#a9a29a');}
  if(p.dash>0){for(let i=3;i>0;i--)sprite('hero',1,x-p.facing*i*23,bottom,45.22,p.facing,0,.12*(4-i));}
  if(p.leverage>0){ctx.save();ctx.strokeStyle='#efa46a';ctx.lineWidth=1;ctx.globalAlpha=.4+.2*Math.sin(game.t*14);ctx.beginPath();ctx.ellipse(x,bottom-32,34,48,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
  ctx.save();if(p.attackMove){const m=p.attackMove;ctx.translate(x,bottom-22);ctx.rotate(m.direction==='up'?-.3*m.facing:m.direction==='down'?.3*m.facing:(m.elapsed<.035?-.12:.12)*m.facing);ctx.translate(-x,-bottom+22);}
@@ -165,7 +166,7 @@ function drawEffects(){
 }
 function render(){
  ctx.imageSmoothingEnabled=false;const title=game.state==='title',cam=title?300:game.camera;
- drawBackground(cam,game.t);ctx.save();const shake=reducedMotion?0:game.shake;ctx.translate(-Math.round(cam)+(Math.random()-.5)*shake,(Math.random()-.5)*shake*.5);
+ drawBackground(cam,game.t);ctx.save();const shake=reducedMotion?0:game.shake;ctx.translate(-Math.round(cam)+(Math.random()-.5)*shake,-Math.round(title?0:game.cameraY)+(Math.random()-.5)*shake*.5);
  for(const p of game.platforms)if(!p.solid)drawPlatform(p);
  drawTerrain(ctx,game.terrain,game.spec.chapter,game.t);
 
