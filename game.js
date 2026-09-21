@@ -4,7 +4,7 @@ import {Game,MARKETS,CARDS,ROOM_SPECS,clamp} from './engine.mjs';
 import {StageMusic} from './audio.mjs';
 const $=id=>document.getElementById(id);
 const canvas=$('game'),ctx=canvas.getContext('2d',{alpha:false});
-const input={left:false,right:false,attack:false,down:false};
+const input={left:false,right:false,attack:false,down:false,up:false};
 const assets={};let game,loaded=false,last=0,noticeUntil=0,roomUntil=0,modalCards=[],modalKind='',lastFocus=null,savedRun=false;
 const stageMusic=new StageMusic({onBlocked:()=>showNotice('BGM은 첫 입력 후 재생됩니다. 상단 BGM 버튼을 눌러주세요.',4),onError:()=>showNotice('BGM 파일을 불러오지 못했습니다.',4)});
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -20,7 +20,7 @@ class AudioFX{
 const audioFX=new AudioFX();
 function archiveRun(){try{const rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');const data=game.log.export();const kept=Array.isArray(rows)?rows.filter(r=>r.run_id!==data.run_id):[];kept.push(data);localStorage.setItem('penny-runs-v1',JSON.stringify(kept.slice(-5)));}catch{showNotice('저장 공간이 부족합니다. 종료 전에 현재 로그를 다운로드하세요.',4);}}
 function exportRuns(){let rows=[];try{rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');}catch{}if(!Array.isArray(rows))rows=[];if(game?.log.started)rows=[...rows.filter(r=>r.run_id!==game.log.runId),game.log.export()];const u=URL.createObjectURL(new Blob([JSON.stringify({schema_version:1,runs:rows},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download='penny-play-sessions.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
-function clearInput(){input.left=input.right=input.attack=input.down=false;}
+function clearInput(){input.left=input.right=input.attack=input.down=input.up=false;game?.action('jump_release');}
 function showNotice(text,duration=3){$('notice').textContent=text;$('notice').classList.remove('hidden');noticeUntil=performance.now()+duration*1000;}
 function showModal(html,kind){clearInput();modalKind=kind;lastFocus=document.activeElement;$('modal-inner').innerHTML=html;$('modal').classList.remove('hidden');requestAnimationFrame(()=>$('modal-inner').querySelector('button')?.focus());}
 function hideModal(){modalKind='';modalCards=[];$('modal').classList.add('hidden');$('modal-inner').innerHTML='';canvas.focus({preventScroll:true});}
@@ -56,7 +56,7 @@ function pauseGame(help=false){
  if(!loaded||!game||!['playing','paused','title'].includes(game.state))return;
  const fromTitle=game.state==='title';if(!fromTitle)game.state='paused';clearInput();
  const buildText=game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'아직 편입한 종목이 없습니다.';
- showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 2단 점프 · ↓+C 발판 아래로</span><span><kbd>X</kbd> 3단 기본 공격 (길게 가능)</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
+ showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 누르는 길이로 높이 조절 · 2단 점프 · ↓+C 내려가기</span><span><kbd>X</kbd> 3단 공격 · ↑+X 위 / 공중 ↓+X 아래</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
  $('resume').onclick=()=>{if(!fromTitle){game.state='playing';stageMusic.setScene('playing',game.spec.chapter);}hideModal();};if($('restart-request'))$('restart-request').onclick=()=>showRestartConfirm();
 }
 function showRestartConfirm(){showModal('<span class="eyebrow">RESTART RUN</span><h2 id="modal-title">이번 도전을 종료할까요?</h2><p>이번 도전에서 모은 시드와 종목은 사라집니다. 이전에 저장된 투자 지식은 유지됩니다.</p><div class="modal-actions"><button class="secondary" id="cancel-restart">돌아가기</button><button class="primary" id="confirm-restart">새로 시작</button></div>','confirm');$('cancel-restart').onclick=()=>pauseGame();$('confirm-restart').onclick=startGame;}
@@ -69,6 +69,7 @@ function bind(){
  $('start').onclick=startGame;$('start-chapter2').onclick=()=>startGame(2);$('sound').onclick=()=>audioFX.enable();$('music').onclick=()=>{stageMusic.setEnabled(!stageMusic.enabled);$('music').textContent=stageMusic.enabled?'BGM ON':'BGM OFF';$('music').setAttribute('aria-pressed',String(stageMusic.enabled));if(stageMusic.enabled)stageMusic.resumeFromGesture();};$('music-volume').oninput=e=>stageMusic.setVolume(e.currentTarget.value/100);$('help').onclick=()=>pauseGame(true);$('pause').onclick=()=>{if(game.state==='paused'){game.state='playing';hideModal();stageMusic.setScene('playing',game.spec.chapter);}else pauseGame();};
  $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('stage').requestFullscreen();}catch{showNotice('이 브라우저에서는 전체 화면을 사용할 수 없습니다.',3);}};
  document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();game.action(b.dataset.action);canvas.focus({preventScroll:true});}));
+ document.querySelectorAll('[data-action=jump]').forEach(b=>{b.addEventListener('pointerdown',e=>b.setPointerCapture(e.pointerId));for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>game.action('jump_release'));});
  document.querySelectorAll('[data-hold]').forEach(b=>{const key=b.dataset.hold;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);input[key]=true;});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>input[key]=false);});
  const mapping={KeyC:'jump',KeyX:'attack',KeyZ:'dash',KeyA:'profit',KeyS:'leverage',KeyD:'circuit',ArrowUp:'interact',Enter:'interact'};
  window.addEventListener('keydown',e=>{
@@ -84,10 +85,10 @@ function bind(){
   if(game.state==='title'&&e.code==='Enter'&&!e.repeat&&modalKind===''){e.preventDefault();startGame();return;}
   if(game.state!=='playing')return;
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space',...Object.keys(mapping)].includes(e.code))e.preventDefault();
-  if(e.code==='ArrowDown')input.down=true;if(e.code==='ArrowLeft')input.left=true;if(e.code==='ArrowRight')input.right=true;if(e.code==='KeyX')input.attack=true;
-  if(mapping[e.code]&&!e.repeat)game.action(e.code==='KeyC'&&input.down?'drop':mapping[e.code]);
+  if(e.code==='ArrowUp')input.up=true;if(e.code==='ArrowDown')input.down=true;if(e.code==='ArrowLeft')input.left=true;if(e.code==='ArrowRight')input.right=true;if(e.code==='KeyX')input.attack=true;
+  if(mapping[e.code]&&!e.repeat)game.action(e.code==='KeyC'&&input.down?'drop':e.code==='KeyX'&&input.up?'attack_up':e.code==='KeyX'&&input.down?'attack_down':mapping[e.code]);
  });
- window.addEventListener('keyup',e=>{if(e.code==='ArrowDown')input.down=false;if(e.code==='ArrowLeft')input.left=false;if(e.code==='ArrowRight')input.right=false;if(e.code==='KeyX')input.attack=false;});
+ window.addEventListener('keyup',e=>{if(e.code==='KeyC')game.action('jump_release');if(e.code==='ArrowUp')input.up=false;if(e.code==='ArrowDown')input.down=false;if(e.code==='ArrowLeft')input.left=false;if(e.code==='ArrowRight')input.right=false;if(e.code==='KeyX')input.attack=false;});
  window.addEventListener('blur',()=>{clearInput();stageMusic.setScene('title',game?.spec?.chapter||1);if(game.state==='playing')pauseGame();});document.addEventListener('visibilitychange',()=>{stageMusic.setScene(document.hidden?'title':(game?.state==='playing'?'playing':'title'),game?.spec?.chapter||1);if(document.hidden){clearInput();if(game.state==='playing')pauseGame();}});
  canvas.addEventListener('pointerdown',()=>canvas.focus({preventScroll:true}));
 }
@@ -141,17 +142,21 @@ function drawEnemy(e){if(e.dead)return;const x=e.x+e.w/2,bottom=e.y+e.h;const he
  const bankFrame=e.state==='windup'?1:(e.state==='attack'||e.state==='charge')?2:e.state==='recover'?3:0;
  sprite(bankSkin?skinPrefix+'-'+e.type:e.type==='central'?'enforcer':e.type==='algorithm'?'drone':e.type,bankSkin?bankFrame:enemyFrame(e),x,bottom,height*.595*(bankSkin&&e.elite?1.15:1),e.type==='boss'?-e.facing:e.facing,e.flash);
  if(e.type!=='boss'&&(e.hp<e.maxHp||e.elite)){const w=e.elite?65:46;rect(x-w/2,e.y-16,w,4,'#121820');rect(x-w/2,e.y-16,w*e.hp/e.maxHp,4,e.elite?'#d8b277':'#bc7273');if(e.elite)label('적대적 인수체',x,e.y-30,'#edca80',11);}}
-function drawHero(){const p=game.player;let frame=0;if(p.hurt>0)frame=7;else if(p.attack>0)frame=6;else if(!p.grounded)frame=p.vy<0?4:5;else if(Math.abs(p.vx)>10)frame=1+Math.floor(game.t*11)%3;
+function drawHero(){const p=game.player;let frame=0;if(p.hurt>0)frame=7;else if(p.attackMove)frame=p.attackMove.elapsed<.035?0:p.attackMove.elapsed<.14?6:0;else if(!p.grounded)frame=p.vy<0?4:5;else if(Math.abs(p.vx)>10)frame=1+Math.floor(game.t*11)%3;
  const x=p.x+p.w/2,bottom=p.y+p.h;
  if(p.dash>0){for(let i=3;i>0;i--)sprite('hero',1,x-p.facing*i*23,bottom,45.22,p.facing,0,.12*(4-i));}
  if(p.leverage>0){ctx.save();ctx.strokeStyle='#efa46a';ctx.lineWidth=1;ctx.globalAlpha=.4+.2*Math.sin(game.t*14);ctx.beginPath();ctx.ellipse(x,bottom-32,34,48,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
- sprite('hero',frame,x,bottom,45.22,p.facing,0,p.inv>0&&Math.floor(game.t*16)%2===0?.5:1);
+ ctx.save();if(p.attackMove){const m=p.attackMove;ctx.translate(x,bottom-22);ctx.rotate(m.direction==='up'?-.3*m.facing:m.direction==='down'?.3*m.facing:(m.elapsed<.035?-.12:.12)*m.facing);ctx.translate(-x,-bottom+22);}
+ sprite('hero',frame,x,bottom,45.22,p.attackMove?.facing??p.facing,0,p.inv>0&&Math.floor(game.t*16)%2===0?.5:1);ctx.restore();
+ if(p.attackMove){const m=p.attackMove,angle=m.direction==='up'?-Math.PI/2:m.direction==='down'?Math.PI/2:m.facing===1?0:Math.PI;const phase=m.elapsed<.035?'ready':m.elapsed<.14?'strike':'recover';const length=phase==='strike'?30:16;ctx.save();ctx.translate(x,bottom-20);ctx.rotate(angle+(phase==='ready'?-.45:phase==='recover'?.4:0));ctx.strokeStyle=phase==='strike'?'#fff0bd':'#b1bbc9';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(5,0);ctx.lineTo(length,0);ctx.stroke();ctx.restore();}
+
 }
 function drawEffects(){
  for(const h of game.hazards){if(h.delay>0){rect(h.x,614,h.w,6,Math.sin(game.t*20)>0?'#ef8376':'#a54a4b');rect(h.x,455,h.w,160,'#e97b6814');label('!',h.x+h.w/2,600,'#ffb294',20);}else{const alpha=Math.min(1,h.life/.45);ctx.save();ctx.globalAlpha=alpha;rect(h.x,455,h.w,165,'#eab07b70');rect(h.x+20,455,h.w-40,165,'#ffd992');ctx.restore();}}
  for(const b of game.projectiles){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(game.t*3);rect(-b.r,-b.r,b.r*2,b.r*2,b.color);rect(-b.r/2,-b.r/2,b.r,b.r,'#fff4c9');ctx.restore();}
  for(const f of game.effects){const alpha=f.life/f.max;ctx.save();ctx.globalAlpha=alpha;
-  if(f.type==='slash'||f.type==='profit'){const radius=f.type==='profit'?155:70;ctx.translate(f.x,f.y);ctx.scale(f.facing,1);ctx.strokeStyle=f.type==='profit'?'#ffe2a1':'#f4bc76';ctx.lineWidth=f.type==='profit'?9:4;ctx.beginPath();ctx.arc(3,0,radius,-1.05+(1-alpha)*.4,1.05+(1-alpha)*.4);ctx.stroke();if(f.type==='profit'){ctx.lineWidth=2;ctx.strokeStyle='#fff3d1';ctx.beginPath();ctx.arc(3,0,radius+17,-.95,1.1);ctx.stroke();}}
+  if(f.type==='slash'||f.type==='profit'){const radius=f.type==='profit'?155:70;ctx.translate(f.x,f.y);if(f.direction==='up')ctx.rotate(-Math.PI/2);else if(f.direction==='down')ctx.rotate(Math.PI/2);else ctx.scale(f.facing,1);ctx.strokeStyle=f.type==='profit'?'#ffe2a1':'#f4bc76';ctx.lineWidth=f.type==='profit'?9:4;ctx.beginPath();ctx.arc(3,0,radius,-1.05+(1-alpha)*.4,1.05+(1-alpha)*.4);ctx.stroke();if(f.type==='profit'){ctx.lineWidth=2;ctx.strokeStyle='#fff3d1';ctx.beginPath();ctx.arc(3,0,radius+17,-.95,1.1);ctx.stroke();}}
+  if(f.type==='landing'){ctx.strokeStyle='#b0bcc5';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(f.x,f.y,8+(1-alpha)*18,3,0,0,Math.PI*2);ctx.stroke();}
   if(f.type==='explosion'){const radius=(1-alpha)*145;ctx.fillStyle='#ef9e5738';ctx.beginPath();ctx.arc(f.x,f.y,radius,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffd091';ctx.lineWidth=5;ctx.stroke();}
   ctx.restore();
  }

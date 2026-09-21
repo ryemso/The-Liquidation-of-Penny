@@ -60,7 +60,7 @@ export class Game{
  constructor({random=Math.random,onEvent=()=>{},knowledge=0}={}){
   this.random=random;this.onEvent=onEvent;this.knowledge=knowledge;this.state='title';this.enemies=[];this.projectiles=[];this.hazards=[];this.particles=[];this.texts=[];this.effects=[];this.room=0;this.t=0;this.camera=0;this.shake=0;this.market=0;this.marketClock=0;this.freeze=0;this.hitstop=0;this.totalTime=0;this.kills=0;this.spent=0;this.build=[];this.clearedRooms=0;this.promoted=false;this.rank='PENNY STOCK';this.stats={atk:18,speed:255,crit:.05,armor:0,dividend:0,profitHeal:0,profitGain:0,short:0,circuitExtra:0,circuitReduce:0,dashFactor:1,guardPierce:0,circuitHeal:0};this.player=this.newPlayer();this.totems=new TotemSystem(this);this.setRoom(0,false);this.log=new RunLog(this);
  }
- newPlayer(){const hp=100+Math.min(20,this.knowledge*2);return{x:120,y:540,w:17.85,h:33.32,vx:0,vy:0,grounded:false,facing:1,hp,maxHp:hp,inv:0,jumps:0,coyote:0,jumpBuffer:0,attack:0,attackCD:0,combo:0,comboClock:0,dash:0,dodgeWindow:0,dashCD:0,profit:0,profitCD:0,leverageCD:0,circuitCD:0,hurt:0,gold:30,leverage:0,leverageDamage:0,leverageKills:0};}
+ newPlayer(){const hp=100+Math.min(20,this.knowledge*2);return{x:120,y:540,w:17.85,h:33.32,vx:0,vy:0,grounded:false,facing:1,hp,maxHp:hp,inv:0,jumps:0,coyote:0,jumpBuffer:0,attack:0,attackMove:null,jumpHeld:false,jumpCut:false,attackCD:0,combo:0,comboClock:0,dash:0,dodgeWindow:0,dashCD:0,profit:0,profitCD:0,leverageCD:0,circuitCD:0,hurt:0,gold:30,leverage:0,leverageDamage:0,leverageKills:0};}
  emit(type,data={}){this.onEvent({type,...data});}
  start(){this.state='playing';this.log.start();this.emit('room',{room:this.spec});this.emit('notice',{text:'← → 이동 · C 2단 점프 · X 공격 · Z 대시',duration:7});}
  setRoom(index,announce=true){
@@ -69,7 +69,7 @@ export class Game{
   this.terrain=terrainFor(this.spec,index);this.platforms.push(...this.terrain.walls,...this.terrain.ledges);
   this.marketPeriod=[24,20,18,18,16][this.spec.chapter-1];this.marketClock=Math.min(this.marketClock,this.marketPeriod-4);this.pressureClock=0;
   this.enemies=[...this.spec.enemies,...this.terrain.extra].map(([type,x,bottom,elite])=>this.makeEnemy(type,x,bottom,elite));this.projectiles=[];this.hazards=[];this.effects=[];this.particles=[];this.texts=[];this.doorOpen=this.spec.kind==='shop';this.rewardGiven=false;this.clearTimer=-1;this.camera=0;this.freeze=0;this.hitstop=0;this.shopVisited=false;
-  Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,dodgeWindow:0,attack:0,grounded:false,jumpBuffer:0,dropPlatform:null});
+  Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,dodgeWindow:0,attack:0,grounded:false,jumpBuffer:0,dropPlatform:null,attackMove:null,jumpHeld:false,jumpCut:false});
   const relicRooms={0:0,1:1,3:2,5:3,6:4,8:0,10:5,11:8,13:15,15:6,16:10,18:12,20:7,21:11,23:14};const ri=relicRooms[index];
   const ledge=this.platforms.filter(p=>!p.ground).at(-1);
   this.relic=null;this.trialEnemy=null;
@@ -96,15 +96,19 @@ export class Game{
   const e={id:++this.enemySerial|| (this.enemySerial=1),...data,type,x,y:bottom-data.h,vx:0,vy:0,facing:-1,grounded:!data.flying,elite,inv:0,flash:0,state:'idle',timer:.6+this.random(),anim:0,spawnX:x,spawnY:bottom-data.h,attackNo:0,activated:false,dead:false};if(elite){e.hp*=2;e.damage*=1.25;e.gold*=2;e.w*=1.15;e.h*=1.15;e.y=bottom-e.h;}const feet=e.y+e.h;e.w*=.595;e.h*=.595;e.y=feet-e.h;e.maxHp=e.hp;return e;
  }
  action(name){
+  if(name==='jump_release'){this.player.jumpHeld=false;if(this.state!=='playing')return;}
   if(this.state!=='playing')return;
   const p=this.player;
   if(name==='drop'){
    const support=this.platforms.find(q=>!q.ground&&!q.solid&&Math.abs(p.y+p.h-q.y)<2&&p.x+p.w>q.x&&p.x<q.x+q.w);
    if(p.grounded&&support){p.dropPlatform=support;p.grounded=false;p.coyote=0;p.jumpBuffer=0;p.jumps=Math.max(1,p.jumps);p.vy=140;p.y+=2;this.log.add('platform_drop');}return;
   }
-  if(name==='jump')p.jumpBuffer=.14;
+  if(name==='jump'){p.jumpBuffer=.14;p.jumpHeld=true;}
+  if(name==='jump_release'){p.jumpHeld=false;if(p.jumpCut&&p.vy< -250){p.vy=-250;p.jumpCut=false;}}
   if(name==='attack')this.attack();
-  if(name==='dash'&&p.dashCD<=0){p.evadeCounted=false;p.dodgeWindow=.23;p.dash=.19;this.totems.signal('dash');p.dashCD=.88*this.stats.dashFactor;p.inv=Math.max(p.inv,.23);p.vy=0;this.emit('sound',{name:'dash'});this.effects.push({type:'dash',x:p.x,y:p.y,facing:p.facing,life:.22,max:.22});}
+  if(name==='attack_up')this.attack('up');
+  if(name==='attack_down')this.attack(p.grounded?'side':'down');
+  if(name==='dash'&&p.dashCD<=0){p.attackMove=null;p.attack=0;p.jumpCut=false;p.evadeCounted=false;p.dodgeWindow=.23;p.dash=.19;this.totems.signal('dash');p.dashCD=.88*this.stats.dashFactor;p.inv=Math.max(p.inv,.23);p.vy=0;this.emit('sound',{name:'dash'});this.effects.push({type:'dash',x:p.x,y:p.y,facing:p.facing,life:.22,max:.22});}
   if(name==='profit'){
    if(p.profitCD>0)return;
    if(p.profit<25){this.emit('notice',{text:'공격을 적중시켜 미실현 수익을 25 이상 모으세요.',duration:2});return;}
@@ -146,11 +150,21 @@ export class Game{
   this.relic.taken=true;this.totems.log('totem_reward_selected',id,{offers:[...this.relic.offers]});this.state='totems';this.emit('totems',{acquired:id});return true;
  }
  damage(){return this.stats.atk*(this.market===1?1.15:1)*(this.market===2?1+this.stats.short*.3:1)*(this.player.leverage>0?1.65:1);}
- attack(){const p=this.player;if(p.attackCD>0||p.dash>0)return;this.log.add('attack',{skill:'basic'});p.combo=p.comboClock>0?(p.combo+1)%3:0;p.comboClock=.9;p.attack=.23;p.attackCD=p.combo===2?.4:.27;const range=p.combo===2?110:85;this.swing(range,this.damage()*(p.combo===2?1.4:1),false);this.effects.push({type:'slash',x:p.x+p.w/2,y:p.y+p.h*.5,facing:p.facing,life:.22,max:.22,combo:p.combo});this.emit('sound',{name:'swing'});}
- swing(range,damage,profit){
-  const p=this.player,hit={x:p.facing===1?p.x+p.w-6:p.x-range+6,y:p.y-20,w:range,h:p.h+40};let count=0;let firstTarget=null;
-  for(const e of this.enemies){if(e.dead||!overlap(hit,e))continue;firstTarget??=e;if(profit)this.totems.signal('profit',e);const crit=this.random()<this.stats.crit;this.hitEnemy(e,damage*(crit?2:1),p.facing,crit,profit);count++;if(!profit&&p.combo===2)this.totems.signal('finisher',e);if(!profit)p.profit=clamp(p.profit+8+this.stats.profitGain,0,100);}
-  if(count)this.log.add('attack_hit',{skill:profit?'profit':'basic',targets:count});
+ attack(direction='side'){const p=this.player;if(p.attackCD>0||p.dash>0||p.hurt>0)return;
+  this.log.add('attack',{skill:'basic',direction});p.combo=p.comboClock>0?(p.combo+1)%3:0;p.comboClock=.9;
+  p.attack=.23;p.attackCD=p.combo===2?.4:.27;
+  p.attackMove={direction,facing:p.facing,elapsed:0,struck:false,range:p.combo===2?110:85,damage:this.damage()*(p.combo===2?1.4:1)};
+ }
+ updateAttack(dt){const p=this.player,m=p.attackMove;if(!m)return;m.elapsed+=dt;
+  if(!m.struck&&m.elapsed>=.035){m.struck=true;this.swing(m.range,m.damage,false,m.direction,m.facing);
+   this.effects.push({type:'slash',x:p.x+p.w/2,y:p.y+p.h*.5,facing:m.facing,direction:m.direction,life:.12,max:.12,combo:p.combo});this.emit('sound',{name:'swing'});}
+  if(m.elapsed>=.23)p.attackMove=null;
+ }
+ swing(range,damage,profit,direction='side',facing=this.player.facing){
+  const p=this.player,hit=direction==='side'?{x:facing===1?p.x+p.w-6:p.x-range+6,y:p.y-20,w:range,h:p.h+40}:{x:p.x-16,y:direction==='up'?p.y-range:p.y+p.h-4,w:p.w+32,h:range};let count=0;let firstTarget=null;
+  for(const e of this.enemies){if(e.dead||!overlap(hit,e))continue;firstTarget??=e;if(profit)this.totems.signal('profit',e);const crit=this.random()<this.stats.crit;this.hitEnemy(e,damage*(crit?2:1),direction==='side'?facing:0,crit,profit);count++;if(!profit&&p.combo===2)this.totems.signal('finisher',e);if(!profit)p.profit=clamp(p.profit+8+this.stats.profitGain,0,100);}
+  if(count)this.log.add('attack_hit',{skill:profit?'profit':'basic',targets:count,direction,airborne:!p.grounded});
+  if(count&&!profit&&direction==='down'&&!p.grounded){p.vy=-480;p.jumpCut=false;p.jumps=1;p.dashCD=0;this.log.add('pogo_success',{targets:count});this.burst(p.x+p.w/2,p.y+p.h,'#f4bc76',10);}
   if(count&&!profit)this.totems.signal('hit',firstTarget);
   if(count){this.hitstop=.045;this.shake=profit?8:3;this.emit('sound',{name:'hit'});}else if(!profit)this.effects.push({type:'miss',x:p.x,y:p.y,life:.01,max:.01});
  }
@@ -166,7 +180,7 @@ export class Game{
  }
  hurt(amount,sourceX,kind='attack',source=null){
   if(kind==='attack'&&source?.attackWeak>0)amount*=.75;
-  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&kind!=='spikes'&&kind!=='mine'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind,source_type:source?.type??(kind==='hazard'?'environment':null)});p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
+  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&kind!=='spikes'&&kind!=='mine'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind,source_type:source?.type??(kind==='hazard'?'environment':null)});p.attackMove=null;p.attack=0;p.jumpCut=false;p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
  }
  heal(amount){if(amount<=0)return;const p=this.player,actual=Math.min(p.maxHp-p.hp,amount);p.hp+=actual;if(actual>0)this.floatText(p.x,p.y-20,`+${actual} HP`,'#88d4ac',15);}
  settleLeverage(){const p=this.player;const ok=p.leverageDamage>=160||p.leverageKills>=2;p.leverage=0;if(ok){p.gold+=18;this.emit('notice',{text:'상환 성공 · 추가 시드 +18',duration:3});this.emit('sound',{name:'reward'});}else{const cost=Math.min(18,Math.max(0,p.hp-1));p.hp-=cost;this.log.add('health_cost',{amount:cost,reason:'leverage_repayment'});this.floatText(p.x,p.y-20,'상환 −18 HP','#ff9b7a',16);this.emit('notice',{text:'레버리지 상환 · 체력 −18',duration:3});}}
@@ -190,19 +204,22 @@ export class Game{
   if(this.relic&&!this.relic.seen&&Math.abs(this.player.x-this.relic.x)<700){this.relic.seen=true;this.totems.log('totem_discovered',this.relic.id,{offers:[...this.relic.offers]});}
   if(this.hitstop>0){this.hitstop-=dt;return;}
   const p=this.player;
+  if(!p.jumpHeld&&p.jumpCut&&p.vy< -250){p.vy=-250;p.jumpCut=false;}
   for(const k of ['dodgeWindow','inv','hurt','attack','attackCD','comboClock','dashCD','profitCD','leverageCD','circuitCD','jumpBuffer'])p[k]=Math.max(0,p[k]-dt);
   if(p.leverage>0){p.leverage-=dt;if(p.leverage<=0)this.settleLeverage();}
   if(this.freeze>0)this.freeze=Math.max(0,this.freeze-dt);
   else if(this.spec.kind!=='shop'){this.marketClock+=dt;if(this.marketClock>=this.marketPeriod){this.marketClock-=this.marketPeriod;this.market=(this.market+1)%3;this.emit('market');}}
   p.coyote=p.grounded?.1:Math.max(0,p.coyote-dt);
   if(p.grounded)p.jumps=0;
-  if(p.jumpBuffer>0&&(p.coyote>0||p.jumps<2)){if(!p.grounded&&p.coyote===0&&p.jumps===0)p.jumps=1;p.vy=-580;p.jumps++;p.jumpBuffer=0;p.coyote=0;p.grounded=false;this.emit('sound',{name:'jump'});this.burst(p.x+p.w/2,p.y+p.h,'#8394a6',5);}
-  if(input.attack)this.attack();
+  if(p.jumpBuffer>0&&(p.coyote>0||p.jumps<2)){if(!p.grounded&&p.coyote===0&&p.jumps===0)p.jumps=1;p.vy=p.jumpHeld?-580:-250;p.jumpCut=p.jumpHeld;p.jumps++;p.jumpBuffer=0;p.coyote=0;p.grounded=false;this.emit('sound',{name:'jump'});this.burst(p.x+p.w/2,p.y+p.h,'#8394a6',5);}
+  if(input.attack)this.attack(input.up?'up':input.down&&!p.grounded?'down':'side');
+  this.updateAttack(dt);
   if(p.dash>0){p.dash=Math.max(0,p.dash-dt);p.vx=p.facing*760;p.vy=-25;}
-  else if(p.hurt<=0){const dir=(input.right?1:0)-(input.left?1:0);p.vx=dir*this.stats.speed*(p.attack>0?.65:1);if(dir)p.facing=dir;}
+  else if(p.hurt<=0){const dir=(input.right?1:0)-(input.left?1:0);p.vx=dir*this.stats.speed*(p.attack>0?(p.combo===2?.85:.95):1);if(dir)p.facing=dir;}
   else p.vx*=.91;
   if(p.dropPlatform&&p.y>p.dropPlatform.y+p.dropPlatform.h)p.dropPlatform=null;
-  moveBody(p,dt,this.platforms,this.width);
+  const wasGrounded=p.grounded,landingSpeed=p.vy;moveBody(p,dt,this.platforms,this.width);
+  if(!wasGrounded&&p.grounded&&landingSpeed>100){p.jumpCut=false;this.burst(p.x+p.w/2,p.y+p.h,'#8394a6',8);this.effects.push({type:'landing',x:p.x+p.w/2,y:p.y+p.h,life:.15,max:.15});}
   this.updateTerrain(dt);if(this.state!=='playing')return;
   if(this.checkRelicPickup())return;
   if(p.y>800){p.y=500;p.x=120;p.vy=0;this.hurt(15,p.x-1,'fall');}
