@@ -51,7 +51,7 @@ export function moveBody(body,dt,platforms,width){
  body.y+=body.vy*dt;body.grounded=false;collideWalls(body,oldX,oldY,platforms.filter(p=>p.solid));
  if(body.vy>=0){
   let top=Infinity;
-  for(const p of platforms)if(oldBottom<=p.y+.5&&body.y+body.h>=p.y&&body.x+body.w>p.x+2&&body.x<p.x+p.w-2)top=Math.min(top,p.y);
+  for(const p of platforms)if(p!==body.dropPlatform&&oldBottom<=p.y+.5&&body.y+body.h>=p.y&&body.x+body.w>p.x+2&&body.x<p.x+p.w-2)top=Math.min(top,p.y);
   if(top!==Infinity){body.y=top-body.h;body.vy=0;body.grounded=true;}
  }
  if(body.y<70){body.y=70;body.vy=Math.max(0,body.vy);}
@@ -69,7 +69,7 @@ export class Game{
   this.terrain=terrainFor(this.spec,index);this.platforms.push(...this.terrain.walls,...this.terrain.ledges);
   this.marketPeriod=[24,20,18,18,16][this.spec.chapter-1];this.marketClock=Math.min(this.marketClock,this.marketPeriod-4);this.pressureClock=0;
   this.enemies=[...this.spec.enemies,...this.terrain.extra].map(([type,x,bottom,elite])=>this.makeEnemy(type,x,bottom,elite));this.projectiles=[];this.hazards=[];this.effects=[];this.particles=[];this.texts=[];this.doorOpen=this.spec.kind==='shop';this.rewardGiven=false;this.clearTimer=-1;this.camera=0;this.freeze=0;this.hitstop=0;this.shopVisited=false;
-  Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,dodgeWindow:0,attack:0,grounded:false,jumpBuffer:0});
+  Object.assign(this.player,{x:120,y:550,vx:0,vy:0,inv:1.3,jumps:0,dash:0,dodgeWindow:0,attack:0,grounded:false,jumpBuffer:0,dropPlatform:null});
   const relicRooms={0:0,1:1,3:2,5:3,6:4,8:0,10:5,11:8,13:15,15:6,16:10,18:12,20:7,21:11,23:14};const ri=relicRooms[index];
   const ledge=this.platforms.filter(p=>!p.ground).at(-1);
   this.relic=null;this.trialEnemy=null;
@@ -98,6 +98,10 @@ export class Game{
  action(name){
   if(this.state!=='playing')return;
   const p=this.player;
+  if(name==='drop'){
+   const support=this.platforms.find(q=>!q.ground&&!q.solid&&Math.abs(p.y+p.h-q.y)<2&&p.x+p.w>q.x&&p.x<q.x+q.w);
+   if(p.grounded&&support){p.dropPlatform=support;p.grounded=false;p.coyote=0;p.jumpBuffer=0;p.jumps=Math.max(1,p.jumps);p.vy=140;p.y+=2;this.log.add('platform_drop');}return;
+  }
   if(name==='jump')p.jumpBuffer=.14;
   if(name==='attack')this.attack();
   if(name==='dash'&&p.dashCD<=0){p.evadeCounted=false;p.dodgeWindow=.23;p.dash=.19;this.totems.signal('dash');p.dashCD=.88*this.stats.dashFactor;p.inv=Math.max(p.inv,.23);p.vy=0;this.emit('sound',{name:'dash'});this.effects.push({type:'dash',x:p.x,y:p.y,facing:p.facing,life:.22,max:.22});}
@@ -197,6 +201,7 @@ export class Game{
   if(p.dash>0){p.dash=Math.max(0,p.dash-dt);p.vx=p.facing*760;p.vy=-25;}
   else if(p.hurt<=0){const dir=(input.right?1:0)-(input.left?1:0);p.vx=dir*this.stats.speed*(p.attack>0?.65:1);if(dir)p.facing=dir;}
   else p.vx*=.91;
+  if(p.dropPlatform&&p.y>p.dropPlatform.y+p.dropPlatform.h)p.dropPlatform=null;
   moveBody(p,dt,this.platforms,this.width);
   this.updateTerrain(dt);if(this.state!=='playing')return;
   if(this.checkRelicPickup())return;

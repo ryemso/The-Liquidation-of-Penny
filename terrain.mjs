@@ -6,6 +6,11 @@ export function terrainFor(spec,index){
  if(spec.chapter>1)traps.push({id:'spikes-2',type:'spikes',x:spec.width-950,y:606,w:84,h:14});
  const extra=[[spec.chapter===1?'rubble':'shield',320,620],['ghost',spec.width*.52,360],['drone',spec.width-330,400]].slice(0,spec.chapter===1?2:3);
  extra.push(['ghost',spec.width*.68,350]);
+ // Three ascending branch layouts; gaps remain available for drop shortcuts.
+ const variant=index%3;
+ for(let i=0;i<4;i++)ledges.unshift({x:260+i*(spec.width-650)/4+variant*24,y:[390,290,350,250][(i+variant)%4],w:145,h:18});
+ const count=spec.kind==='elite'?6:5;
+ for(let i=0;i<count;i++){let x=420+i*(spec.width-760)/(count-1);if(i%2===0)for(const wall of walls)if(x+40>wall.x&&x<wall.x+wall.w)x=wall.x+wall.w+32;extra.push([i%2?'ghost':(spec.chapter===1?'rubble':'shield'),x,i%2?310:620]);}
  return {walls,traps,ledges,extra};
 }
 export function collideWalls(body,oldX,oldY,walls){

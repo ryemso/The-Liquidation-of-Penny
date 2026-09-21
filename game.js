@@ -4,7 +4,7 @@ import {Game,MARKETS,CARDS,ROOM_SPECS,clamp} from './engine.mjs';
 import {StageMusic} from './audio.mjs';
 const $=id=>document.getElementById(id);
 const canvas=$('game'),ctx=canvas.getContext('2d',{alpha:false});
-const input={left:false,right:false,attack:false};
+const input={left:false,right:false,attack:false,down:false};
 const assets={};let game,loaded=false,last=0,noticeUntil=0,roomUntil=0,modalCards=[],modalKind='',lastFocus=null,savedRun=false;
 const stageMusic=new StageMusic({onBlocked:()=>showNotice('BGM은 첫 입력 후 재생됩니다. 상단 BGM 버튼을 눌러주세요.',4),onError:()=>showNotice('BGM 파일을 불러오지 못했습니다.',4)});
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -20,7 +20,7 @@ class AudioFX{
 const audioFX=new AudioFX();
 function archiveRun(){try{const rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');const data=game.log.export();const kept=Array.isArray(rows)?rows.filter(r=>r.run_id!==data.run_id):[];kept.push(data);localStorage.setItem('penny-runs-v1',JSON.stringify(kept.slice(-5)));}catch{showNotice('저장 공간이 부족합니다. 종료 전에 현재 로그를 다운로드하세요.',4);}}
 function exportRuns(){let rows=[];try{rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');}catch{}if(!Array.isArray(rows))rows=[];if(game?.log.started)rows=[...rows.filter(r=>r.run_id!==game.log.runId),game.log.export()];const u=URL.createObjectURL(new Blob([JSON.stringify({schema_version:1,runs:rows},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download='penny-play-sessions.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
-function clearInput(){input.left=input.right=input.attack=false;}
+function clearInput(){input.left=input.right=input.attack=input.down=false;}
 function showNotice(text,duration=3){$('notice').textContent=text;$('notice').classList.remove('hidden');noticeUntil=performance.now()+duration*1000;}
 function showModal(html,kind){clearInput();modalKind=kind;lastFocus=document.activeElement;$('modal-inner').innerHTML=html;$('modal').classList.remove('hidden');requestAnimationFrame(()=>$('modal-inner').querySelector('button')?.focus());}
 function hideModal(){modalKind='';modalCards=[];$('modal').classList.add('hidden');$('modal-inner').innerHTML='';canvas.focus({preventScroll:true});}
@@ -56,7 +56,7 @@ function pauseGame(help=false){
  if(!loaded||!game||!['playing','paused','title'].includes(game.state))return;
  const fromTitle=game.state==='title';if(!fromTitle)game.state='paused';clearInput();
  const buildText=game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'아직 편입한 종목이 없습니다.';
- showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 점프 / 공중에서 한 번 더</span><span><kbd>X</kbd> 3단 기본 공격 (길게 가능)</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
+ showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 2단 점프 · ↓+C 발판 아래로</span><span><kbd>X</kbd> 3단 기본 공격 (길게 가능)</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
  $('resume').onclick=()=>{if(!fromTitle){game.state='playing';stageMusic.setScene('playing',game.spec.chapter);}hideModal();};if($('restart-request'))$('restart-request').onclick=()=>showRestartConfirm();
 }
 function showRestartConfirm(){showModal('<span class="eyebrow">RESTART RUN</span><h2 id="modal-title">이번 도전을 종료할까요?</h2><p>이번 도전에서 모은 시드와 종목은 사라집니다. 이전에 저장된 투자 지식은 유지됩니다.</p><div class="modal-actions"><button class="secondary" id="cancel-restart">돌아가기</button><button class="primary" id="confirm-restart">새로 시작</button></div>','confirm');$('cancel-restart').onclick=()=>pauseGame();$('confirm-restart').onclick=startGame;}
@@ -84,10 +84,10 @@ function bind(){
   if(game.state==='title'&&e.code==='Enter'&&!e.repeat&&modalKind===''){e.preventDefault();startGame();return;}
   if(game.state!=='playing')return;
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space',...Object.keys(mapping)].includes(e.code))e.preventDefault();
-  if(e.code==='ArrowLeft')input.left=true;if(e.code==='ArrowRight')input.right=true;if(e.code==='KeyX')input.attack=true;
-  if(mapping[e.code]&&!e.repeat)game.action(mapping[e.code]);
+  if(e.code==='ArrowDown')input.down=true;if(e.code==='ArrowLeft')input.left=true;if(e.code==='ArrowRight')input.right=true;if(e.code==='KeyX')input.attack=true;
+  if(mapping[e.code]&&!e.repeat)game.action(e.code==='KeyC'&&input.down?'drop':mapping[e.code]);
  });
- window.addEventListener('keyup',e=>{if(e.code==='ArrowLeft')input.left=false;if(e.code==='ArrowRight')input.right=false;if(e.code==='KeyX')input.attack=false;});
+ window.addEventListener('keyup',e=>{if(e.code==='ArrowDown')input.down=false;if(e.code==='ArrowLeft')input.left=false;if(e.code==='ArrowRight')input.right=false;if(e.code==='KeyX')input.attack=false;});
  window.addEventListener('blur',()=>{clearInput();stageMusic.setScene('title',game?.spec?.chapter||1);if(game.state==='playing')pauseGame();});document.addEventListener('visibilitychange',()=>{stageMusic.setScene(document.hidden?'title':(game?.state==='playing'?'playing':'title'),game?.spec?.chapter||1);if(document.hidden){clearInput();if(game.state==='playing')pauseGame();}});
  canvas.addEventListener('pointerdown',()=>canvas.focus({preventScroll:true}));
 }
