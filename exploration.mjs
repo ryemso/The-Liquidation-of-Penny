@@ -22,7 +22,7 @@ export function updateExploration(g,dt){
  if(g.conceptCard)g.conceptCard.remaining=Math.max(0,g.conceptCard.remaining-dt);
  const r=g.exploration,p=g.player;if(!r)return;
  const route=p.x>(r.routeStart??600)&&p.x<(r.routeEnd??1740)?(p.y+p.h<460?'upper':p.y>500?'lower':null):null;
- if(route&&!r.routes.includes(route)){r.routes.push(route);g.log.add('route_selected',{route,first:r.routes.length===1});g.emit('notice',{text:route==='upper'?'상층 거래소 · 이동 도전 / 선택 토템':'하층 배수로 · 적을 지나쳐 출구로 이동 가능',duration:3});}
+ if(route&&!r.routes.includes(route)){r.routes.push(route);g.log.add('route_selected',{route,first:r.routes.length===1});g.emit('notice',{text:route==='upper'?(r.upperName||'상층 거래소')+' · 이동 도전 / 선택 토템':(r.lowerName||'하층 배수로')+' · 적을 지나쳐 출구로 이동 가능',duration:3});}
  if(!r.rejoined&&p.x>(r.rejoinX??1800)){r.rejoined=true;g.log.add('route_rejoined',{routes:[...r.routes]});}
  if(r.shortcut&&!r.shortcutUsed&&p.x>r.bridge.x&&p.x<r.bridge.x+r.bridge.w&&Math.abs(p.y+p.h-r.bridge.y)<3){r.shortcutUsed=true;g.log.add('shortcut_used');}
 }
