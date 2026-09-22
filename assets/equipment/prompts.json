@@ -1,0 +1,45 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "id": "buffett-ledger",
+      "name": "워렌 버핏의 장부",
+      "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A closed deep forest-green accounting ledger, thick cream pages, brass corner guards, gold clasp and simple ascending bar-chart emblem. Mythic equipment. Bold compact book silhouette."
+    },
+    {
+      "id": "musk-imagination",
+      "name": "일론 머스크의 상상",
+      "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A small silver retro rocket with a violet glass porthole and short orange pixel exhaust, tilted diagonally upward. Mythic equipment embodying speculative imagination. Chunky readable rocket silhouette."
+    },
+    {
+      "id": "jensen-accelerator",
+      "name": "젠슨 황의 가속기",
+      "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A square dark green computing accelerator chip with four short gold pins on each edge and bright lime core, three stepped pixels indicate acceleration. Mythic equipment. No logos."
+    },
+    {
+      "id": "fed-principles",
+      "name": "연준의장의 원칙",
+      "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A rolled ivory monetary-policy scroll held by a dark blue band with a small brass balance-scales seal, one curled end. Mythic equipment. Compact scroll silhouette."
+    },
+    {
+      "id": "newton-insight",
+      "name": "뉴턴의 깨달음",
+      "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A copper miniature gravity pendulum instrument, one red apple-shaped weight hanging inside a triangular brass support. Ancient relic, teal patina, broad readable silhouette."
+    },
+    {
+      "id": "turing-algorithm",
+      "name": "앨런 튜링의 알고리즘",
+      "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A tiny navy and aged brass cipher machine with three cyan-lit rotor windows and a short cream punched paper strip emerging from its top. Ancient computing relic. Simple boxy silhouette."
+    },
+    {
+      "id": "einstein-mistake",
+      "name": "아인슈타인의 실수",
+      "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A cracked brass hourglass with violet sand and slightly skewed dark metal frame, a few cyan grains suspended inside. Ancient time-distortion relic. Bold hourglass silhouette."
+    },
+    {
+      "id": "pizza-score",
+      "name": "피자스코어",
+      "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A single triangular golden pizza slice with three large red pepperoni pixels/clusters, cream cheese and thick toasted crust, small dark teal ribbon tab with a gold star at the crust. Currency icon, appetizing and exceptionally legible at 24 pixels, no coin behind it."
+    }
+  ]
+}

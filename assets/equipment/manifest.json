@@ -1,0 +1,58 @@
+[
+  {
+    "id": "buffett-ledger",
+    "name": "워렌 버핏의 장부",
+    "rarity": "mythic",
+    "src": "./buffett-ledger.png",
+    "displaySize": 48
+  },
+  {
+    "id": "musk-imagination",
+    "name": "일론 머스크의 상상",
+    "rarity": "mythic",
+    "src": "./musk-imagination.png",
+    "displaySize": 48
+  },
+  {
+    "id": "jensen-accelerator",
+    "name": "젠슨 황의 가속기",
+    "rarity": "mythic",
+    "src": "./jensen-accelerator.png",
+    "displaySize": 48
+  },
+  {
+    "id": "fed-principles",
+    "name": "연준의장의 원칙",
+    "rarity": "mythic",
+    "src": "./fed-principles.png",
+    "displaySize": 48
+  },
+  {
+    "id": "newton-insight",
+    "name": "뉴턴의 깨달음",
+    "rarity": "relic",
+    "src": "./newton-insight.png",
+    "displaySize": 48
+  },
+  {
+    "id": "turing-algorithm",
+    "name": "앨런 튜링의 알고리즘",
+    "rarity": "relic",
+    "src": "./turing-algorithm.png",
+    "displaySize": 48
+  },
+  {
+    "id": "einstein-mistake",
+    "name": "아인슈타인의 실수",
+    "rarity": "relic",
+    "src": "./einstein-mistake.png",
+    "displaySize": 48
+  },
+  {
+    "id": "pizza-score",
+    "name": "피자스코어",
+    "rarity": "currency",
+    "src": "./pizza-score.png",
+    "displaySize": 24
+  }
+]
