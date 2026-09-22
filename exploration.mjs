@@ -21,10 +21,10 @@ export function explain(g,id,title,lines){
 export function updateExploration(g,dt){
  if(g.conceptCard)g.conceptCard.remaining=Math.max(0,g.conceptCard.remaining-dt);
  const r=g.exploration,p=g.player;if(!r)return;
- const route=p.x>600&&p.x<1740?(p.y+p.h<460?'upper':p.y>500?'lower':null):null;
+ const route=p.x>(r.routeStart??600)&&p.x<(r.routeEnd??1740)?(p.y+p.h<460?'upper':p.y>500?'lower':null):null;
  if(route&&!r.routes.includes(route)){r.routes.push(route);g.log.add('route_selected',{route,first:r.routes.length===1});g.emit('notice',{text:route==='upper'?'상층 거래소 · 이동 도전 / 선택 토템':'하층 배수로 · 적을 지나쳐 출구로 이동 가능',duration:3});}
- if(!r.rejoined&&p.x>1800){r.rejoined=true;g.log.add('route_rejoined',{routes:[...r.routes]});}
- if(r.shortcut&&!r.shortcutUsed&&p.x>700&&p.x<1100&&Math.abs(p.y+p.h-440)<3){r.shortcutUsed=true;g.log.add('shortcut_used');}
+ if(!r.rejoined&&p.x>(r.rejoinX??1800)){r.rejoined=true;g.log.add('route_rejoined',{routes:[...r.routes]});}
+ if(r.shortcut&&!r.shortcutUsed&&p.x>r.bridge.x&&p.x<r.bridge.x+r.bridge.w&&Math.abs(p.y+p.h-r.bridge.y)<3){r.shortcutUsed=true;g.log.add('shortcut_used');}
 }
 export function interactExploration(g){
  const r=g.exploration,p=g.player;if(!r||r.shortcut||Math.hypot(p.x+p.w/2-r.switchX,p.y+p.h-r.switchY)>85)return false;
@@ -33,9 +33,10 @@ export function interactExploration(g){
  explain(g,'breakout','돌파', ['가격이 지지·저항 구간을 넘어서는 움직임입니다.','경계를 넘어 길을 여는 게임적 비유이며, 상승을 보장하지 않습니다.']);return true;
 }
 export function drawExploration(ctx,g){
- const r=g.exploration;if(!r)return;
+ const r=g.exploration;
  ctx.save();ctx.font='13px sans-serif';ctx.textAlign='center';
- for(const [x,y,text]of [[420,565,'하층 → 출구 · 전멸 불필요'],[520,365,'상층 ↑ 토템 도전'],[1800,530,'재합류 → 상점']]){ctx.fillStyle='#101923';ctx.fillRect(x-105,y-18,210,26);ctx.fillStyle='#d8c6a0';ctx.fillText(text,x,y);}
+ for(const [x,y,text]of (g.roomSigns||[])){ctx.fillStyle='#101923';ctx.fillRect(x-105,y-18,210,26);ctx.fillStyle='#d8c6a0';ctx.fillText(text,x,y);}
+ if(!r){ctx.restore();return;}
  ctx.fillStyle=r.shortcut?'#8ac6ab':'#d4a977';ctx.fillRect(r.switchX-12,r.switchY-26,24,26);ctx.fillText(r.shortcut?'연결교 개방':'↑ 연결교 개방',r.switchX,r.switchY-38);
  if(!r.shortcut){ctx.strokeStyle='#b0a07870';ctx.setLineDash([8,8]);ctx.beginPath();ctx.moveTo(r.bridge.x,r.bridge.y);ctx.lineTo(r.bridge.x+r.bridge.w,r.bridge.y);ctx.stroke();}
  ctx.restore();

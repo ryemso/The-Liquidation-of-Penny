@@ -1,3 +1,4 @@
+import {buildChapterOne} from './chapter-one.mjs';
 import {buildCrossroads,updateExploration,interactExploration,explain} from './exploration.mjs';
 import {wallSide,verticalCamera} from './movement.mjs';
 import {terrainFor,collideWalls} from './terrain.mjs';
@@ -86,7 +87,7 @@ export class Game{
    while(offers.length<2&&pool.length){const j=Math.floor(this.random()*pool.length);offers.push(pool.splice(j,1)[0]);}
    this.relic={id:offers[0]||preferred,offers,x:summit.x+summit.w/2,y:summit.y-25,taken:false,seen:false,hidden:[1,6,11,16,21].includes(index),trial:[3,8,13,18,23].includes(index),trialStarted:false,trialComplete:false};
   }
-  buildCrossroads(this);
+  buildCrossroads(this);buildChapterOne(this);
   if(this.player.leverage>0)this.settleLeverage();
   if(this.log?.started)this.log.stageStart();
   if(announce){this.emit('room',{room:this.spec});if(this.spec.kind==='shop')this.emit('notice',{text:`${this.spec.name} · 중앙 교환소 앞에서 ↑`,duration:5});if(this.spec.kind==='boss')this.emit('notice',{text:this.spec.chapter===1?'“내 말만 믿어. 손실은 언제나 네 몫이지.”':'“네 가치는 담보로도 부족하다. 청산을 집행한다.”',duration:5});if(index===5)this.emit('notice',{text:'방패는 뒤에서 공격하거나 익절로 관통하세요. 드론의 조준선은 발사 전에 고정됩니다.',duration:7});if(this.spec.pressure)this.emit('notice',{text:'공매도 경보 · 표시된 바닥 밖으로 이동하거나 발판으로 피하세요.',duration:6});}
@@ -269,7 +270,7 @@ export class Game{
 
   if(e.grounded&&this.terrain.walls.some(w=>Math.abs((e.x+e.w/2)-(w.x+w.w/2))<e.w+85)){e.vy=-580;e.grounded=false;}
   const p=this.player;e.anim+=dt;e.timer-=dt;const dx=p.x+p.w/2-(e.x+e.w/2),dy=(p.y+p.h/2)-(e.y+e.h/2),dist=Math.abs(dx);
-  if(!e.activated){if(dist<610){e.activated=true;this.log.add('enemy_encounter',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});}else return;}
+  if(!e.activated){if(dist<(e.encounterRange??610)){e.activated=true;this.log.add('enemy_encounter',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});}else return;}
   if(e.type==='market'){this.updateMarket(e,dt,dx);return;}
   if(e.type==='central'){this.updateCentral(e,dt,dx);return;}
   if(e.type==='algorithm'){this.updateAlgorithm(e,dt,dx);return;}
