@@ -10,7 +10,7 @@ for(const t of TOTEMS.filter(t=>t.sequence))test(`${t.name}: pattern completes a
  assert.equal(g.totems.states[t.id].cd,t.cd);assert.equal(g.log.events.filter(x=>x.event==='totem_activated').length,1);
  if(t.effect==='heal')assert.equal(g.player.hp,65);
  else if(t.effect==='weak')assert.equal(e.totemWeak,t.value);
- else if(t.effect==='weaken'){g.player.inv=0;g.hurt(20,e.x,'attack',e);assert.equal(g.player.hp,35);}
+ else if(t.effect==='weaken'){g.player.inv=0;g.hurt(20,e.x,'attack',e);assert.equal(g.player.hp,36);}
  else assert.ok(e.hp<hp);
  g.totems.signal(t.sequence.at(-1),e);assert.equal(g.log.events.filter(x=>x.event==='totem_activated').length,1);
 });
@@ -21,7 +21,7 @@ test('chapter 2 transitions into chapter 3 and final boss has three avoidable te
 test('logs join run, stage, reward and totem; invalid reward is rejected',()=>{const g=make();g.enemies.forEach(e=>e.dead=true);for(let i=0;i<180;i++)g.update(1/120);g.player.x=g.width-100;g.player.y=620-g.player.h;g.action('interact');g.chooseReward('invalid');assert.equal(g.state,'reward');g.chooseReward(g.currentOffers[0]);const exported=g.log.export();assert.ok(exported.events.every(e=>e.run_id===g.log.runId));assert.equal(exported.summary.stage_completion_rate,1);assert.ok(exported.events.some(e=>e.event==='reward_presented'));assert.ok(exported.events.some(e=>e.event==='reward_selected'));assert.equal(ROOM_SPECS.length,25);assert.equal(TOTEMS.length,16);});
 
 test('chapter two entry bonuses match shortcut and cannot stack',()=>{const direct=new Game();direct.prepareChapterTwo();direct.setRoom(5,false);const normal=make();normal.setRoom(4);normal.state='chapter';normal.enterChapterTwo();for(const k of ['maxHp','profit'])assert.equal(direct.player[k],normal.player[k]);assert.equal(direct.stats.atk,normal.stats.atk);direct.prepareChapterTwo();assert.equal(direct.stats.atk,24);});
-test('weaken belongs to an attacker, not another enemy at the same coordinate',()=>{const g=make();const weak=g.enemies[0],other=g.enemies[1];weak.attackWeak=8;other.x=weak.x;g.player.inv=0;g.hurt(20,other.x,'attack',other);assert.equal(g.player.hp,80);g.player.inv=0;g.hurt(20,weak.x,'attack',weak);assert.equal(g.player.hp,65);assert.equal(g.log.events.at(-1).source_id,weak.id);});
+test('weaken belongs to an attacker, not another enemy at the same coordinate',()=>{const g=make();const weak=g.enemies[0],other=g.enemies[1];weak.attackWeak=8;other.x=weak.x;g.player.inv=0;g.hurt(20,other.x,'attack',other);assert.equal(g.player.hp,82);g.player.inv=0;g.hurt(20,weak.x,'attack',weak);assert.equal(g.player.hp,68);assert.equal(g.log.events.at(-1).source_id,weak.id);});
 test('repayment records actual cost without counting combat damage',()=>{const g=make();g.player.hp=10;g.player.leverage=1;g.settleLeverage();assert.equal(g.player.hp,1);assert.equal(g.log.events.at(-1).event,'health_cost');assert.equal(g.log.events.at(-1).amount,9);assert.equal(g.log.export().summary.damage_taken,0);});
 
 test('projectile retains attacker identity after movement and defeat',()=>{const g=make();const e=g.enemies[0];g.player.inv=0;const source={id:e.id,type:e.type};g.projectiles=[{x:g.player.x+15,y:g.player.y+20,vx:0,vy:0,r:8,damage:10,life:2,source}];e.x+=200;e.dead=true;g.updateThreats(.01);const hit=g.log.events.find(x=>x.event==='damage_taken');assert.equal(hit.source_id,e.id);assert.equal(hit.damage_kind,'projectile');});
