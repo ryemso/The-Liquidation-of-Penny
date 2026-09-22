@@ -1,3 +1,4 @@
+import {buildCrossroads,updateExploration,interactExploration,explain} from './exploration.mjs';
 import {wallSide,verticalCamera} from './movement.mjs';
 import {terrainFor,collideWalls} from './terrain.mjs';
 import {RunLog} from './analytics.mjs';
@@ -85,6 +86,7 @@ export class Game{
    while(offers.length<2&&pool.length){const j=Math.floor(this.random()*pool.length);offers.push(pool.splice(j,1)[0]);}
    this.relic={id:offers[0]||preferred,offers,x:summit.x+summit.w/2,y:summit.y-25,taken:false,seen:false,hidden:[1,6,11,16,21].includes(index),trial:[3,8,13,18,23].includes(index),trialStarted:false,trialComplete:false};
   }
+  buildCrossroads(this);
   if(this.player.leverage>0)this.settleLeverage();
   if(this.log?.started)this.log.stageStart();
   if(announce){this.emit('room',{room:this.spec});if(this.spec.kind==='shop')this.emit('notice',{text:`${this.spec.name} · 중앙 교환소 앞에서 ↑`,duration:5});if(this.spec.kind==='boss')this.emit('notice',{text:this.spec.chapter===1?'“내 말만 믿어. 손실은 언제나 네 몫이지.”':'“네 가치는 담보로도 부족하다. 청산을 집행한다.”',duration:5});if(index===5)this.emit('notice',{text:'방패는 뒤에서 공격하거나 익절로 관통하세요. 드론의 조준선은 발사 전에 고정됩니다.',duration:7});if(this.spec.pressure)this.emit('notice',{text:'공매도 경보 · 표시된 바닥 밖으로 이동하거나 발판으로 피하세요.',duration:6});}
@@ -115,11 +117,13 @@ export class Game{
    if(p.profit<25){this.emit('notice',{text:'공격을 적중시켜 미실현 수익을 25 이상 모으세요.',duration:2});return;}
    this.log.add('attack',{skill:'profit'});const saved=p.profit;p.profit=0;p.profitCD=5;p.inv=Math.max(p.inv,.35);this.swing(185,this.damage()*(1+saved/30)*(1+this.stats.short*.2),true);this.heal(this.stats.profitHeal);this.effects.push({type:'profit',x:p.x+p.w/2,y:p.y+p.h/2,facing:p.facing,life:.45,max:.45});this.shake=8;this.emit('sound',{name:'profit'});this.emit('notice',{text:`익절! 수익 ${Math.floor(saved)}% 확정`,duration:1.8});
   }
-  if(name==='leverage'&&p.leverageCD<=0){p.leverage=8;p.leverageCD=24;p.leverageDamage=0;p.leverageKills=0;this.emit('sound',{name:'lever'});this.emit('notice',{text:'8초 안에 2마리 처치 또는 피해 160! 실패 시 체력 −18 (최소 1)',duration:4});}
+  if(name==='leverage'&&p.leverageCD<=0){p.leverage=8;p.leverageCD=24;if(this.exploration)explain(this,'leverage','레버리지',['노출을 늘려 이익과 손실의 크기를 확대합니다.','게임에서는 공격 강화와 상환 실패 비용으로 단순화했습니다.']);p.leverageDamage=0;p.leverageKills=0;this.emit('sound',{name:'lever'});this.emit('notice',{text:'8초 안에 2마리 처치 또는 피해 160! 실패 시 체력 −18 (최소 1)',duration:4});}
   if(name==='circuit'&&p.circuitCD<=0){this.totems.signal('circuit');this.freeze=2+this.stats.circuitExtra;p.circuitCD=Math.max(8,18-this.stats.circuitReduce);this.heal(this.stats.circuitHeal);this.emit('sound',{name:'circuit'});this.emit('notice',{text:'TRADING HALT · 적과 투사체 정지',duration:2});}
   if(name==='interact'){
+   if(interactExploration(this))return;
+   if(this.exploration&&p.x>this.width-180&&p.y+p.h>500&&!this.rewardGiven){this.completeExploration();return;}
    if(this.spec.kind==='shop'&&Math.abs(p.x-650)<170){this.state='shop';this.emit('shop');return;}
-   if(p.x>this.width-180){
+   if(p.x>this.width-180&&p.y+p.h>500){
     if(!this.doorOpen){this.emit('notice',{text:'남은 적을 모두 처치하면 출구가 열립니다.',duration:2});return;}
     if(this.room===ROOM_SPECS.length-1){this.finish(true);return;}
     if(this.room===4||this.room===9||this.room===14||this.room===19){this.state='chapter';this.emit('chapter');return;}
@@ -141,7 +145,7 @@ export class Game{
  }
  chooseTrial(accept){if(this.state!=='trial_choice')return;this.state='playing';this.emit('resume');const r=this.relic;
   if(!accept){this.log.add('elite_trial_declined');return;}
-  r.trialStarted=true;const e=this.makeEnemy('drone',r.x-24,r.y-45,true);e.optional=true;e.activated=true;this.enemies.push(e);this.trialEnemy=e;this.log.add('elite_trial_started');
+  r.trialStarted=true;const e=this.makeEnemy('drone',r.x-24,r.y-45,true);e.optional=true;e.activated=true;if(this.exploration){e.routeBand='upper';e.anchorY=e.y;}this.enemies.push(e);this.trialEnemy=e;this.log.add('elite_trial_started');
  }
  chooseRelic(id){
   if(this.state!=='relic_choice'||!this.relic||this.relic.taken)return false;
@@ -228,6 +232,7 @@ export class Game{
   if(!wasGrounded&&p.grounded&&landingSpeed>100){p.jumpCut=false;this.burst(p.x+p.w/2,p.y+p.h,'#8394a6',8);this.effects.push({type:'landing',x:p.x+p.w/2,y:p.y+p.h,life:.15,max:.15});}
   p.wall=wallSide(p,this.platforms);if(!p.wall||p.grounded)p.wallSliding=false;
   this.updateTerrain(dt);if(this.state!=='playing')return;
+  updateExploration(this,dt);
   if(this.checkRelicPickup())return;
   if(p.y>800){p.y=500;p.x=120;p.vy=0;this.hurt(15,p.x-1,'fall');}
   const target=clamp(p.x+p.w/2-500,0,Math.max(0,this.width-1280));this.camera+=(target-this.camera)*Math.min(1,dt*7);this.cameraY=verticalCamera(this.cameraY,p,this.worldTop,dt);this.shake=Math.max(0,this.shake-dt*24);
@@ -237,11 +242,18 @@ export class Game{
   for(const v of this.particles){v.life-=dt;v.x+=v.vx*dt;v.y+=v.vy*dt;v.vy+=500*dt;}this.particles=this.particles.filter(v=>v.life>0);
   for(const v of this.texts){v.life-=dt;v.y-=32*dt;}this.texts=this.texts.filter(v=>v.life>0);
   if(this.state!=='playing')return;
-  if(this.spec.kind!=='shop'&&!this.enemies.some(e=>!e.dead&&!e.optional)&&!this.rewardGiven){
+  if(!this.exploration&&this.spec.kind!=='shop'&&!this.enemies.some(e=>!e.dead&&!e.optional)&&!this.rewardGiven){
    if(this.clearTimer<0){this.clearTimer=.85;this.projectiles=[];this.hazards=[];this.heal(this.stats.dividend);this.emit('sound',{name:'clear'});}
    this.clearTimer-=dt;
    if(this.clearTimer<=0){this.rewardGiven=true;this.clearedRooms++;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});if(p.leverage>0)this.settleLeverage();if(this.spec.kind==='boss'){this.doorOpen=true;this.heal(25);this.emit('notice',{text:`${this.spec.bossName} 격파 · 오른쪽 출구 ↑`,duration:7});}else{this.state='reward';const cards=this.rewardOptions();this.currentOffers=cards.map(c=>c.id);this.log.add('reward_presented',{offers:this.currentOffers});this.emit('reward',{cards});}}
   }
+ }
+ completeExploration(){
+  if(!this.exploration||this.rewardGiven)return;
+  if(this.relic?.trialStarted&&!this.relic.trialComplete){this.log.add('elite_trial_abandoned');explain(this,'stop_loss','손절',['손실을 확정하고 포지션을 정리하는 행동입니다.','진행 중인 도전을 포기해 추가 피해를 피하는 게임적 비유입니다.']);}
+  this.rewardGiven=true;this.clearedRooms++;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt,completion:'traversal',remaining_enemies:this.enemies.filter(e=>!e.dead).length,routes:[...this.exploration.routes]});
+  if(this.player.leverage>0)this.settleLeverage();this.heal(this.stats.dividend);
+  this.state='reward';const cards=this.rewardOptions();this.currentOffers=cards.map(c=>c.id);this.log.add('reward_presented',{offers:this.currentOffers});this.emit('reward',{cards});
  }
  updateTerrain(dt){
   const p=this.player;
@@ -253,6 +265,8 @@ export class Game{
   }
  }
  updateEnemy(e,dt){
+  if(e.routeBand&&((e.routeBand==='upper'&&this.player.y>500)||(e.routeBand==='lower'&&this.player.y+this.player.h<460)||Math.abs(this.player.y-e.y)>230)){e.vx=0;return;}
+
   if(e.grounded&&this.terrain.walls.some(w=>Math.abs((e.x+e.w/2)-(w.x+w.w/2))<e.w+85)){e.vy=-580;e.grounded=false;}
   const p=this.player;e.anim+=dt;e.timer-=dt;const dx=p.x+p.w/2-(e.x+e.w/2),dy=(p.y+p.h/2)-(e.y+e.h/2),dist=Math.abs(dx);
   if(!e.activated){if(dist<610){e.activated=true;this.log.add('enemy_encounter',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});}else return;}
@@ -264,7 +278,7 @@ export class Game{
   if(e.type==='shield'){this.updateShield(e,dt,dx,dy);return;}
   if(e.type==='drone'){this.updateDrone(e,dt,dx);return;}
   if(e.type==='ghost'){
-   if(e.state==='idle'){e.facing=dx<0?-1:1;e.x=clamp(e.x+Math.sign(dx)*(dist>230?e.speed:dist<135?-e.speed:0)*dt,10,this.width-e.w-10);const wanted=clamp(p.y-55,280,505);e.y+=(wanted-e.y)*dt*.9;e.y+=Math.sin(e.anim*3)*dt*10;if(e.timer<=0&&dist<530){e.state='windup';e.timer=.65;}}
+   if(e.state==='idle'){e.facing=dx<0?-1:1;e.x=clamp(e.x+Math.sign(dx)*(dist>230?e.speed:dist<135?-e.speed:0)*dt,10,this.width-e.w-10);const wanted=e.routeBand?clamp(p.y-55,e.anchorY-60,e.anchorY+60):clamp(p.y-55,280,505);e.y+=(wanted-e.y)*dt*.9;e.y+=Math.sin(e.anim*3)*dt*10;if(e.timer<=0&&dist<530){e.state='windup';e.timer=.65;}}
    else if(e.state==='windup'&&e.timer<=0){const len=Math.hypot(dx,dy)||1;this.projectiles.push({source:{id:e.id,type:e.type},x:e.x+e.w/2,y:e.y+e.h*.4,vx:dx/len*225,vy:dy/len*225,r:7,damage:e.damage,life:5,color:'#80c9ed'});e.state='recover';e.timer=.55;this.emit('sound',{name:'shot'});}
    else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=1.7;}
    if(overlap(p,e))this.hurt(e.damage,e.x,'contact',e);return;
@@ -289,7 +303,7 @@ export class Game{
  }
  updateDrone(e,dt,dx){
   const p=this.player;
-  if(e.state==='idle'){e.facing=dx<0?-1:1;const dist=Math.abs(dx);e.vx=Math.sign(dx)*(dist>260?e.speed:dist<165?-e.speed:0);e.x=clamp(e.x+e.vx*dt,15,this.width-e.w-15);e.y+=(clamp(p.y-95,340,490)-e.y)*dt*.8;e.y+=Math.sin(e.anim*4)*dt*12;if(e.timer<=0&&dist<580){e.state='windup';e.timer=.85;e.aimX=clamp(p.x+15+p.vx*.3,10,this.width-10);e.aimY=p.y+28;}}
+  if(e.state==='idle'){e.facing=dx<0?-1:1;const dist=Math.abs(dx);e.vx=Math.sign(dx)*(dist>260?e.speed:dist<165?-e.speed:0);e.x=clamp(e.x+e.vx*dt,15,this.width-e.w-15);e.y+=((e.routeBand?clamp(p.y-95,e.anchorY-60,e.anchorY+60):clamp(p.y-95,340,490))-e.y)*dt*.8;e.y+=Math.sin(e.anim*4)*dt*12;if(e.timer<=0&&dist<580){e.state='windup';e.timer=.85;e.aimX=clamp(p.x+15+p.vx*.3,10,this.width-10);e.aimY=p.y+28;}}
   else if(e.state==='windup'&&e.timer<=0){const x=e.x+e.w/2,y=e.y+e.h/2,angle=Math.atan2(e.aimY-y,e.aimX-x);for(const offset of [-.08,.08])this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(angle+offset)*270,vy:Math.sin(angle+offset)*270,r:6,damage:e.damage,life:5,color:'#75d9de'});e.state='recover';e.timer=.55;this.emit('sound',{name:'shot'});}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=1.6;}
   if(overlap(e,p))this.hurt(8,e.x,'contact',e);
