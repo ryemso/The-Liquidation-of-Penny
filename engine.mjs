@@ -174,7 +174,7 @@ export class Game{
  }
  swing(range,damage,profit,direction='side',facing=this.player.facing){
   const p=this.player,hit=direction==='side'?{x:facing===1?p.x+p.w-6:p.x-range+6,y:p.y-20,w:range,h:p.h+40}:{x:p.x-16,y:direction==='up'?p.y-range:p.y+p.h-4,w:p.w+32,h:range};let count=0;let firstTarget=null;
-  for(const e of this.enemies){if(e.dead||!overlap(hit,e))continue;firstTarget??=e;if(profit)this.totems.signal('profit',e);const crit=this.random()<this.stats.crit;this.hitEnemy(e,damage*(crit?2:1),direction==='side'?facing:0,crit,profit);addImpact(this,e,profit||p.combo===2);count++;if(!profit)this.equipmentEffects.hit();if(!profit&&p.combo===2)this.totems.signal('finisher',e);if(!profit)p.profit=clamp(p.profit+8+this.stats.profitGain,0,100);}
+  for(const e of this.enemies){if(e.dead||!overlap(hit,e))continue;firstTarget??=e;if(profit)this.totems.signal('profit',e);const crit=this.random()<this.stats.crit;this.hitEnemy(e,damage*(crit?2:1),direction==='side'?facing:0,crit,profit);addImpact(this,e,profit||p.combo===2);count++;if(!profit)this.equipmentEffects.hit();if(!profit&&p.combo===2)this.totems.signal('finisher',e);if(!profit)p.profit=clamp(p.profit+7+this.stats.profitGain,0,100);}
   if(count)this.log.add('attack_hit',{skill:profit?'profit':'basic',targets:count,direction,airborne:!p.grounded});
   if(count&&!profit&&direction==='down'&&!p.grounded){p.vy=-480;p.jumpCut=false;p.jumps=1;p.dashCD=0;this.log.add('pogo_success',{targets:count});this.burst(p.x+p.w/2,p.y+p.h,'#f4bc76',10);}
   if(count&&!profit)this.totems.signal('hit',firstTarget);
@@ -182,13 +182,14 @@ export class Game{
  }
  hitEnemy(e,amount,direction=1,crit=false,pierce=false,echo=false){
   if(e.dead)return;
+  if(!echo&&e.takeoverShield&&this.enemies.some(m=>!m.dead&&m.summoner===e.id))amount*=.65;
   if(!echo&&e.totemWeak>0)amount*=1.25;
   if(e.armored&&!pierce&&e.facing===-direction&&['idle','windup'].includes(e.state)){amount*=Math.min(1,.3+this.stats.guardPierce);this.floatText(e.x+e.w/2,e.y-31,'정면 방어','#82d0de',11);}
   if(!echo)amount*=this.equipmentEffects.consumePrediction();const dealt=Math.min(e.hp,amount);if(!echo&&this.circuitBank&&this.freeze>0)e.circuitDebt=(e.circuitDebt||0)+dealt*.35;e.hp-=amount;e.flash=.13;e.inv=.08;if(!e.boss){const push=direction*(pierce?55:20),next={...e,x:e.x+push};if(!this.terrain.walls.some(w=>overlap(next,w)))e.x=clamp(next.x,0,this.width-e.w);}
   this.floatText(e.x+e.w/2,e.y-12,String(Math.round(amount)),crit?'#fbd88e':'#edf0e8',crit?22:16);
   this.burst(e.x+e.w/2,e.y+e.h*.5,crit?'#ffd47e':'#d4dce3',7);
   if(this.player.leverage>0)this.player.leverageDamage+=dealt;
-  if(e.hp<=0){this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;const gold=Math.round(e.gold*(this.market===2?1.35:1));this.player.gold+=gold;this.floatText(e.x,e.y-40,`+${gold} 시드`,'#f0c875',13);this.burst(e.x+e.w/2,e.y+e.h/2,'#dcb96d',18);this.effects.push({type:'impact',x:e.x+e.w/2,y:e.y+e.h/2,strong:true,life:.35,max:.35});if(e.boss){this.shake=13;this.projectiles=[];this.hazards=[];this.emit('sound',{name:'bossdown'});}}
+  if(e.hp<=0){this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;const gold=Math.round(e.gold*(this.market===2?1.35:1));this.player.gold+=gold;this.floatText(e.x,e.y-40,`+${gold} 시드`,'#f0c875',13);this.burst(e.x+e.w/2,e.y+e.h/2,'#dcb96d',18);this.effects.push({type:'impact',x:e.x+e.w/2,y:e.y+e.h/2,strong:true,life:.35,max:.35});if(e.boss){for(const minion of this.enemies)if(minion.summoner===e.id)minion.dead=true;this.shake=13;this.projectiles=[];this.hazards=[];this.emit('sound',{name:'bossdown'});}}
  }
  hurt(amount,sourceX,kind='attack',source=null){
   // Apply once at player damage resolution, including enemy-owned projectiles and hazards.
@@ -334,9 +335,9 @@ export class Game{
   if(e.state==='idle'){
    e.facing=dx<0?-1:1;if(Math.abs(dx)>260)e.vx=e.facing*e.speed;
    if(e.timer<=0){e.attackNo++;e.pattern=e.attackNo%3;e.state='windup';e.timer=1.25;e.lockDirection=e.facing;e.aimX=p.x+15;e.aimY=p.y+28;
-    if(e.pattern===0)this.emit('notice',{text:'매도벽 압박 · 돌진 후 열린 방패가 공격 기회입니다.',duration:2.5});
-    if(e.pattern===1)this.emit('notice',{text:'차입 매도 탄막 · 고정된 조준선에서 벗어나세요.',duration:2.5});
-    if(e.pattern===2){const gap=clamp(p.x+(p.x<this.width/2?170:-170),180,this.width-180);e.safeGap=gap;for(let x=60;x<this.width-60;x+=105)if(Math.abs(x+43-gap)>120)this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:84,delay:1.5,life:.42,damage:22,hit:false});this.emit('notice',{text:'마진콜 집행 · 표시가 없는 틈이나 높은 발판으로!',duration:2.5});}
+    if(e.pattern===0)
+    if(e.pattern===1)
+    if(e.pattern===2){const gap=clamp(p.x+(p.x<this.width/2?170:-170),180,this.width-180);e.safeGap=gap;for(let x=60;x<this.width-60;x+=105)if(Math.abs(x+43-gap)>120)this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:84,delay:1.5,life:.42,damage:22,hit:false});}
    }
   }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.62:.95;e.secondVolley=phase===2&&e.pattern===1;if(e.pattern===1)this.fireEnforcer(e,phase);}
   else if(e.state==='attack'){
@@ -350,9 +351,9 @@ export class Game{
  updateBoss(e,dt,dx){
   const phase=e.hp<e.maxHp*.5?2:1;e.facing=dx<0?-1:1;e.vx=0;
   if(e.state==='idle'){if(Math.abs(dx)>230)e.vx=e.facing*e.speed;if(e.timer<=0){e.attackNo++;e.pattern=e.attackNo%3;e.state='windup';e.timer=phase===2?.9:1.15;e.lockDirection=e.facing;
-   if(e.pattern===0){this.emit('notice',{text:'물량 밀어내기 · 돌진을 점프하거나 대시로 회피',duration:2});}
-   if(e.pattern===1){this.emit('notice',{text:'허위 매수 신호 · 확성기 탄막을 피하세요',duration:2});}
-   if(e.pattern===2){const px=this.player.x;for(const offset of [-165,0,165])this.hazards.push({source:{id:e.id,type:e.type},x:clamp(px+offset,80,this.width-100),y:620,w:72,delay:e.timer+.25,life:.45,damage:19,hit:false});this.emit('notice',{text:'거짓 지지선 · 붉은 바닥 밖으로 이동',duration:2});}
+   if(e.pattern===0){}
+   if(e.pattern===1){}
+   if(e.pattern===2){const px=this.player.x;for(const offset of [-165,0,165])this.hazards.push({source:{id:e.id,type:e.type},x:clamp(px+offset,80,this.width-100),y:620,w:72,delay:e.timer+.25,life:.45,damage:19,hit:false});}
   }}else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.65:.5;if(e.pattern===1){const bx=e.x+e.w/2,by=e.y+55;const angle=Math.atan2(this.player.y+28-by,this.player.x+15-bx);for(let i=-2;i<=2;i++)this.projectiles.push({source:{id:e.id,type:e.type},x:bx,y:by,vx:Math.cos(angle+i*.2)*(phase===2?265:230),vy:Math.sin(angle+i*.2)*(phase===2?265:230),r:9,damage:15,life:5,color:'#f1b174'});this.emit('sound',{name:'roar'});}}
   else if(e.state==='attack'){if(e.pattern===0){e.vx=e.lockDirection*(phase===2?520:410);if(overlap({...e,x:e.x-10,w:e.w+20},this.player))this.hurt(22,e.x,'attack',e);}if(e.timer<=0){e.state='recover';e.timer=phase===2?.8:1.3;}}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.9:1.35;}
@@ -362,7 +363,7 @@ export class Game{
   const p=this.player,phase=e.hp<e.maxHp*.5?2:1;e.facing=dx<0?-1:1;
   if(e.state==='idle'&&e.timer<=0){
    e.pattern=e.attackNo++%3;e.state='windup';e.timer=phase===2?1:1.4;e.aimX=p.x+15;e.aimY=p.y+28;
-   this.emit('notice',{text:['예측 사격 · 조준이 고정되면 자리를 바꾸세요','주문 폭주 · 바닥 예고선을 피하세요','데이터 스윕 · 발판 위로 올라가세요'][e.pattern],duration:2});
+   
    this.log.add('boss_pattern',{pattern:e.pattern,phase});
   }else if(e.state==='windup'&&e.timer<=0){
    e.state='attack';e.timer=.7;
@@ -376,7 +377,7 @@ export class Game{
   e.facing=dx<0?-1:1;const phase=e.hp<e.maxHp*.5?2:1;
   if(e.state==='idle'&&e.timer<=0){e.pattern=e.attackNo++%3;e.state='windup';e.timer=1.4;e.aimX=this.player.x+15;
    this.log.add('boss_pattern',{enemy_id:e.id,pattern:e.pattern,phase});
-   this.emit('notice',{text:['금리 인상 · 순차 폭발 사이로 이동하세요','유동성 공급 · 느린 탄막을 넘으세요','지급준비율 인상 · 가운데 안전 구역으로!'][e.pattern],duration:3});
+   
    if(e.pattern!==1){for(let x=80;x<this.width-80;x+=140){if(e.pattern===2&&Math.abs(x+45-this.width/2)<190)continue;this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:90,delay:1.4+(e.pattern===0?x/this.width*1.7:0),life:.4,damage:phase===2?25:21,hit:false});}}
   }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=2;
    if(e.pattern===1){const x=e.x+e.w/2,y=e.y+45;for(let i=-3;i<=3;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:e.facing*Math.cos(i*.2)*170,vy:Math.sin(i*.2)*170,r:9,damage:20,life:8,color:'#f1d58b'});}
@@ -387,7 +388,7 @@ export class Game{
   e.facing=dx<0?-1:1;const phase=e.hp<e.maxHp*.5?2:1;
   if(e.state==='idle'&&e.timer<=0){e.pattern=e.attackNo++%3;e.state='windup';e.timer=1.5;e.aimX=this.player.x+15;e.aimY=this.player.y+28;
    this.market=[1,2,0][e.pattern];this.marketClock=0;this.emit('market');this.log.add('boss_pattern',{enemy_id:e.id,pattern:e.pattern,phase});
-   this.emit('notice',{text:['탐욕의 상승 · 고정된 조준을 피하세요','공포의 폭락 · 높은 발판으로!','균형 회복 · 중앙의 틈으로 이동하세요'][e.pattern],duration:3});
+   
    if(e.pattern!==0)for(let x=50;x<this.width-50;x+=130){if(e.pattern===2&&Math.abs(x+40-this.width/2)<180)continue;this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:82,delay:1.5,life:.4,damage:22,hit:false});}
   }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=1;
    if(e.pattern===0){const x=e.x+74,y=e.y+45,a=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-3;i<=3;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(a+i*.17)*240,vy:Math.sin(a+i*.17)*240,r:8,damage:22,life:7,color:'#e381a0'});}

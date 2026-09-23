@@ -15,5 +15,5 @@ export function createEquipmentUI({storage,showModal,hideModal,getState,wallet,o
  document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>trade(b.dataset.buy,false));document.querySelectorAll('[data-upgrade]').forEach(b=>b.onclick=()=>trade(b.dataset.upgrade,true));
  document.querySelectorAll('[data-equip]').forEach(b=>b.onclick=()=>set(b.dataset.equip));document.getElementById('unequip').onclick=()=>set(null);document.getElementById('equipment-done').onclick=close;
  }
- return {renderTitle,close,loadout:()=>({...selected})};
+ return {renderTitle,close,open,loadout:()=>({...selected})};
 }

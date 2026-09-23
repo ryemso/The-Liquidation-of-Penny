@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Game} from '../engine.mjs';
+import {beginAdvanced,fireAdvanced} from '../advanced-boss.mjs';
+import {updateSpecialPattern} from '../boss-patterns.mjs';
+import {inventory} from '../totem-ui.mjs';
+const make=room=>{const g=new Game({random:()=>.5});g.start();g.setRoom(room);return g;};
+test('higher bosses alternate their new attacks and fixed aim bullets travel both ways',()=>{for(const room of [14,19,24]){const g=make(room),e=g.enemies[0];e.state='idle';e.timer=0;e.specialCycle=7;assert.ok(updateSpecialPattern(g,e));assert.ok(e.advanced);assert.equal(g.enemies.length,1);e.timer=1.8;fireAdvanced(g,e);assert.equal(g.enemies.filter(m=>m.summoner===e.id).length,2);fireAdvanced(g,e);assert.equal(g.enemies.length,3);beginAdvanced(g,e);e.timer=1.8;fireAdvanced(g,e);if(room!==19){assert.ok(g.projectiles.some(p=>p.vy>0));assert.ok(g.projectiles.some(p=>p.vy<0));}assert.ok(g.enemies.filter(m=>!m.dead&&m.summoner===e.id).length<=2);}});
+test('paid issue spends boss HP and takeover shield ends when aides are defeated',()=>{const g=make(19),e=g.enemies[0],hp=e.hp;beginAdvanced(g,e);e.timer=1;fireAdvanced(g,e);assert.ok(e.hp<hp);const m=make(24),b=m.enemies[0];beginAdvanced(m,b);b.timer=1;fireAdvanced(m,b);const before=b.hp;m.hitEnemy(b,100,0,false,true);assert.equal(before-b.hp,65);m.enemies.filter(x=>x.summoner===b.id).forEach(x=>x.dead=true);const now=b.hp;m.hitEnemy(b,100,0,false,true);assert.equal(now-b.hp,100);});
+test('summoned aides pay no seed and disappear with their boss',()=>{const g=make(14),e=g.enemies[0];beginAdvanced(g,e);e.timer=1;fireAdvanced(g,e);assert.ok(g.enemies.filter(x=>x.summoner===e.id).every(x=>x.gold===0));g.hitEnemy(e,99999,0,false,true);assert.ok(g.enemies.every(x=>x.dead));});
+test('opening totem inventory cannot replace title equipment slot handlers',()=>{const old=globalThis.document,handler=()=>{},titleSlot={onclick:handler};const buttons={};globalThis.document={querySelectorAll(selector){return selector==='[data-slot]'?[titleSlot]:[];},getElementById(id){if(id==='modal-inner')return {querySelectorAll:()=>[]};return buttons[id]??={};}};try{const g=make(0);inventory(g,()=>{},()=>{});assert.equal(titleSlot.onclick,handler);}finally{globalThis.document=old;}});
