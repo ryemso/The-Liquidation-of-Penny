@@ -1,3 +1,4 @@
+import {LOCATIONS,locationFor,drawLocation} from './backgrounds.mjs';
 import {drawCombatFeel} from './combat-feel.mjs';
 import {PizzaWallet} from './currency.mjs';
 import {createEquipmentUI} from './equipment-ui.mjs';
@@ -41,7 +42,7 @@ function event(e){
  if(e.type==='totems'){openTotems(e.acquired);return;}
  if(e.type==='sound'){audioFX.play(e.name);return;}
  if(e.type==='notice')showNotice(e.text,e.duration);
- if(e.type==='room'){$('room-kicker').textContent=e.room.subtitle;$('room-title').textContent=e.room.name;$('room-toast').classList.remove('hidden');roomUntil=performance.now()+3000;$('footer-location').textContent=e.room.chapterName+' · '+e.room.name;$('chapter-tag').textContent=`CHAPTER 0${e.room.chapter} · ${e.room.chapterName}`;$('boss-hud').classList.toggle('hidden',e.room.kind!=='boss');if(e.room.kind==='boss')$('boss-name').textContent=e.room.bossName||'보스';stageMusic.setScene('playing',e.room.chapter);}
+ if(e.type==='room'){$('room-kicker').textContent=locationFor(e.room.chapter).name+' · '+locationFor(e.room.chapter).rooms[e.room.localRoom-1];$('room-title').textContent=e.room.name;$('room-toast').classList.remove('hidden');roomUntil=performance.now()+3000;$('footer-location').textContent=locationFor(e.room.chapter).name+' · '+e.room.name;$('chapter-tag').textContent=`CHAPTER 0${e.room.chapter} · ${locationFor(e.room.chapter).name}`;$('boss-hud').classList.toggle('hidden',e.room.kind!=='boss');if(e.room.kind==='boss')$('boss-name').textContent=e.room.bossName||'보스';stageMusic.setScene('playing',e.room.chapter);}
  if(e.type==='reward'){stageMusic.setScene('reward',game.spec.chapter);modalCards=e.cards;showModal(`<span class="eyebrow">ROOM CLEAR · 포트폴리오</span><h2 id="modal-title">다음 투자를 선택하세요</h2><p>피자스코어 +${game.lastClearPizza} 지급 · 누적 ${pizzaWallet.balance}<br>하나의 종목을 편입합니다. 효과는 이번 도전이 끝날 때까지 유지됩니다.</p><div class="cards">${e.cards.map((c,i)=>cardHTML(c,i)).join('')}</div><div class="modal-actions"><small>숫자 1 · 2 · 3 또는 카드 클릭</small></div>`,'reward');$('modal-inner').querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>game.chooseReward(b.dataset.card));}
  if(e.type==='shop'){stageMusic.setScene('shop',game.spec.chapter);showShop();}
  if(e.type==='trial_choice'){stageMusic.setScene('reward',game.spec.chapter);showModal('<span class="eyebrow">선택형 엘리트 도전</span><h2 id="modal-title">보관함의 경비를 깨울까요?</h2><p>강화 드론을 쓰러뜨리면 보관함의 선택지가 최대 3종으로 늘고 시드 25를 얻습니다. 도전을 시작해도 본래 출구로 떠날 수 있습니다.</p><div class="modal-actions"><button id="trial-no">지나가기</button><button class="primary" id="trial-yes">도전 시작</button></div>','trial');$('trial-no').onclick=()=>game.chooseTrial(false);$('trial-yes').onclick=()=>game.chooseTrial(true);}
@@ -131,17 +132,7 @@ function atlas(image,cols,rows,magenta=false,customCuts=null){
 function sprite(name,frame,x,bottom,height,facing=1,flash=0,alpha=1){const a=assets[name];if(!a)return;const f=a.frames[clamp(frame,0,a.frames.length-1)],scale=height/a.maxHeight,w=f.w*scale,h=f.h*scale;ctx.save();ctx.globalAlpha=alpha;ctx.translate(Math.round(x),Math.round(bottom));ctx.scale(facing,1);ctx.filter=flash>0?'brightness(2.1)':'brightness(1.15)';ctx.drawImage(a.image,f.x,f.y,f.w,f.h,Math.round(-w/2),Math.round(-h),Math.ceil(w),Math.ceil(h));ctx.restore();}
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));}
 function label(text,x,y,color='#d4dfe7',size=12,align='center'){ctx.save();ctx.font=`600 ${size}px "Noto Sans KR", sans-serif`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillStyle='#060b13';ctx.fillText(text,Math.round(x+1),Math.round(y+2));ctx.fillStyle=color;ctx.fillText(text,Math.round(x),Math.round(y));ctx.restore();}
-function drawBackground(cam,time){
- ctx.fillStyle='#101a29';ctx.fillRect(0,0,1280,720);
- if(assets.alley){const image=game.spec.chapter>=2?assets.institution:assets.alley;const w=1750,h=985;const drift=cam*.16;ctx.drawImage(image,-drift,-55,w,h);if(drift>180)ctx.drawImage(image,w-drift-1,-55,w,h);}
- if(game.spec.chapter===5)rect(0,0,1280,720,'#4b163455');
- if(game.spec.chapter===4)rect(0,0,1280,720,'#67502355');
- if(game.spec.chapter===3)rect(0,0,1280,720,'#06394755');
- if(game.room===4)rect(0,0,1280,720,'#36152424');
- const fog=ctx.createLinearGradient(0,430,0,720);fog.addColorStop(0,'#07111d00');fog.addColorStop(1,'#050b13a8');ctx.fillStyle=fog;ctx.fillRect(0,430,1280,290);
- // Ambient dust is a lightweight particle effect, kept away from combat silhouettes.
- for(let i=0;i<25;i++){const x=((i*137+Math.sin(i)*61-cam*.25+time*(i%3+1)*3)%1320+1320)%1320;const y=120+(i*71)%380+Math.sin(time*.5+i)*9;rect(x,y,2,2,i%3===0?'#d8b96945':'#869cb02a');}
-}
+function drawBackground(cam,time){drawLocation(ctx,assets,game.spec,cam,time,game.cameraY||0);}
 function drawPlatform(p){const x=p.x,y=p.y,w=p.w;rect(x,y,w,p.h,p.ground?'#0a101b':'#192536');rect(x,y,w,4,'#6a7380');rect(x,y,w,2,'#d6bd80');rect(x,y+5,w,3,'#343d4e');rect(x,y+p.h-3,w,3,'#070d15');for(let xx=x+8;xx<x+w-4;xx+=36){rect(xx,y+8,25,5,'#273447');rect(xx+24,y+6,2,p.h-7,'#0b1320');}if(p.ground){for(let xx=x;xx<x+w;xx+=95){rect(xx,y+25,92,31,'#141e2d');rect(xx+2,y+28,87,1,'#263143');rect(xx+30,y+60,62,36,'#101a27');}rect(x,y+15,w,5,'#080e19');}}
 function drawExit(){const x=game.width-100,open=game.doorOpen;ctx.save();ctx.shadowColor=open?'#d4b474':'#667a9c';ctx.shadowBlur=open?25:0;rect(x-32,520,70,100,'#0a0f18');rect(x-36,517,5,103,'#6c7178');rect(x+37,517,5,103,'#6c7178');rect(x-36,514,78,6,'#8e8572');const g=ctx.createLinearGradient(x,520,x+45,620);g.addColorStop(0,open?'#e6c27f':'#253145');g.addColorStop(1,open?'#8d6d44':'#121a29');ctx.fillStyle=g;ctx.fillRect(x-25,523,56,97);ctx.restore();rect(x-20,532,45,2,open?'#ffdf9a':'#46526a');label(open?'↑ 다음 구역':game.exploration?'↑ 탐험 완료 · 보상':'잠김',x+2,489,open?'#f8d28b':'#8fa1b4',13);if(open&&Math.abs(game.player.x-x)<140)label(game.room===4?'↑ 상장 심사':'↑ 이동',x,470,'#fff0c6',15);if(!open){rect(x-5,554,20,18,'#121c2a');rect(x,545,10,12,'#64718a');rect(x+3,548,4,7,'#263043');}}
 function drawShop(){const x=650;rect(x-80,509,160,110,'#142234');rect(x-88,505,176,12,'#7c6d4e');rect(x-74,527,148,65,'#0b1523');rect(x-67,532,134,2,'#bba675');label('07 EXCHANGE',x,550,'#d0b77e',16);label('공칠의 거래소',x,577,'#b1c1d3',12);rect(x-87,599,177,8,'#43516a');label('↑ 거래 / 회복',x,484,'#f0d49f',14);if(Math.abs(game.player.x-x)<170)label('“시드가 있다면, 아직 기회는 있지.”',x,456,'#ded4ba',13);}
@@ -202,13 +193,14 @@ function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fil
 function tick(now){const dt=Math.min((now-last)/1000||0,1/30);last=now;game.update(dt,input);stageMusic.update(dt);render();if(game.state!=='title')updateHUD();requestAnimationFrame(tick);}
 async function init(){
  game=new Game({onEvent:event,knowledge:progress.knowledge});bind();updateSaveNote();equipmentUI.renderTitle();updateWallet();
- try{const names=['hero','rubble','bomb','ghost','boss','alley','institution','shield','drone','enforcer'];const imgs=await Promise.all(names.map(n=>imageLoad(`./${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=['alley','institution'].includes(n)?imgs[i]:atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}for(const [prefix,file,boss,cuts] of [
+ try{const names=['hero','rubble','bomb','ghost','boss','shield','drone','enforcer'];const imgs=await Promise.all(names.map(n=>imageLoad(`./${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}for(const [prefix,file,boss,cuts] of [
  ['inst','institution-v2','enforcer',[0,191,392,584,774,939,1254]],
  ['algo','algorithm-v2','algorithm',[0,195,376,549,755,910,1254]],
  ['bank','central-v2','central',[0,194,389,586,809,983,1254]],
  ['market','market-v2','market',[0,199,390,591,772,947,1254]]
  ]){const sheet=await imageLoad('./assets/monsters/'+file+'.png'),types=['shield','drone','bomb','ghost','rubble',boss];for(let row=0;row<types.length;row++){const strip=document.createElement('canvas'),top=Math.round(cuts[row]/1254*sheet.height);strip.width=sheet.width;strip.height=Math.round(cuts[row+1]/1254*sheet.height)-top;strip.getContext('2d').drawImage(sheet,0,top,sheet.width,strip.height,0,0,sheet.width,strip.height);assets[prefix+'-'+types[row]]=atlas(strip,4,1,false);}}
 
+ await Promise.all(LOCATIONS.map(async location=>{assets[location.id]=await imageLoad('./assets/backgrounds/'+location.id+'.png');}));
  loaded=true;$('start').disabled=false;$('start').textContent='시장에 진입하기 ↗';requestAnimationFrame(tick);}
  catch(err){$('start').textContent='에셋 다시 불러오기';$('start').disabled=false;$('start').onclick=()=>location.reload();$('save-note').textContent='이미지를 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';console.error('Asset load failed:',err);}
 }
