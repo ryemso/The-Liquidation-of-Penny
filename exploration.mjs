@@ -1,3 +1,14 @@
+// Leave body clearance above generated platforms and avoid wall undersides.
+export function shortcutSegments(g){
+ const b=g.exploration?.bridge;if(!b)return [];
+ let spans=[[Math.max(0,b.x),Math.min(g.width,b.x+b.w)]];
+ for(const p of g.platforms){
+  if(p.shortcutSegment||p.ground||p.y>=b.y+b.h+8||p.y+p.h<=b.y-48)continue;
+  const left=p.x-8,right=p.x+p.w+8;
+  spans=spans.flatMap(([a,z])=>right<=a||left>=z?[[a,z]]:[[a,Math.min(z,left)],[Math.max(a,right),z]].filter(([x,y])=>y>x));
+ }
+ return spans.filter(([a,z])=>z-a>=48).map(([x,z])=>({...b,x,w:z-x,shortcutSegment:true}));
+}
 // Hand-authored pilot: a floor bypass and a climbable upper trading hall.
 export function buildCrossroads(g){
  g.conceptCard=null;if(g.room!==1){g.exploration=null;return;}
@@ -24,11 +35,12 @@ export function updateExploration(g,dt){
  const route=p.x>(r.routeStart??600)&&p.x<(r.routeEnd??1740)?(p.y+p.h<460?'upper':p.y>500?'lower':null):null;
  if(route&&!r.routes.includes(route)){r.routes.push(route);g.log.add('route_selected',{route,first:r.routes.length===1});g.emit('notice',{text:route==='upper'?(r.upperName||'상층 거래소')+' · 이동 도전 / 선택 토템':(r.lowerName||'하층 배수로')+' · 적을 지나쳐 출구로 이동 가능',duration:3});}
  if(!r.rejoined&&p.x>(r.rejoinX??1800)){r.rejoined=true;g.log.add('route_rejoined',{routes:[...r.routes]});}
- if(r.shortcut&&!r.shortcutUsed&&p.x>r.bridge.x&&p.x<r.bridge.x+r.bridge.w&&Math.abs(p.y+p.h-r.bridge.y)<3){r.shortcutUsed=true;g.log.add('shortcut_used');}
+ if(r.shortcut&&!r.shortcutUsed&&(r.bridgeSegments||[]).some(b=>p.x+p.w>b.x&&p.x<b.x+b.w&&Math.abs(p.y+p.h-b.y)<3)){r.shortcutUsed=true;g.log.add('shortcut_used');}
 }
 export function interactExploration(g){
  const r=g.exploration,p=g.player;if(!r||r.shortcut||Math.hypot(p.x+p.w/2-r.switchX,p.y+p.h-r.switchY)>85)return false;
- r.shortcut=true;g.platforms.splice(1,0,r.bridge);g.log.add('shortcut_opened');
+ r.bridgeSegments=shortcutSegments(g);if(!r.bridgeSegments.length){g.emit('notice',{text:'연결교를 펼칠 공간이 부족합니다.',duration:2});return false;}
+ r.shortcut=true;g.platforms.splice(1,0,...r.bridgeSegments);g.log.add('shortcut_opened');
  g.emit('notice',{text:'연결교 개방 · 하층에서 상층으로 돌아오는 길이 열렸습니다.',duration:4});
  explain(g,'breakout','돌파', ['가격이 지지·저항 구간을 넘어서는 움직임입니다.','경계를 넘어 길을 여는 게임적 비유이며, 상승을 보장하지 않습니다.']);return true;
 }
@@ -38,6 +50,6 @@ export function drawExploration(ctx,g){
  for(const [x,y,text]of (g.roomSigns||[])){ctx.fillStyle='#101923';ctx.fillRect(x-105,y-18,210,26);ctx.fillStyle='#d8c6a0';ctx.fillText(text,x,y);}
  if(!r){ctx.restore();return;}
  ctx.fillStyle=r.shortcut?'#8ac6ab':'#d4a977';ctx.fillRect(r.switchX-12,r.switchY-26,24,26);ctx.fillText(r.shortcut?'연결교 개방':'↑ 연결교 개방',r.switchX,r.switchY-38);
- if(!r.shortcut){ctx.strokeStyle='#b0a07870';ctx.setLineDash([8,8]);ctx.beginPath();ctx.moveTo(r.bridge.x,r.bridge.y);ctx.lineTo(r.bridge.x+r.bridge.w,r.bridge.y);ctx.stroke();}
+ if(!r.shortcut){ctx.strokeStyle='#b0a07870';ctx.setLineDash([8,8]);ctx.beginPath();for(const b of shortcutSegments(g)){ctx.moveTo(b.x,b.y);ctx.lineTo(b.x+b.w,b.y);}ctx.stroke();}
  ctx.restore();
 }
