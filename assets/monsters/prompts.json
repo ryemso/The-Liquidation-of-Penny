@@ -1,0 +1,61 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "id": "institution-v2",
+      "name": "2장 — 달러와 기관",
+      "prompt": "Use case: stylized-concept. Production pixel-art sprite sheet for finance action roguelite The Liquidation of Penny. TRUE TRANSPARENT BACKGROUND. Exactly 4 columns by 6 rows in a perfectly uniform grid, no borders, no labels. Each cell one isolated full-body monster, chunky deliberate pixel art, bold dark outline, coarse visible square pixels, 3-tone shading, small-sprite readability, no blur. Each row repeats SAME character across 4 poses: idle, attack anticipation, strong melee attack, recovery. Facing RIGHT, side view or 3/4 side. Center each sprite within its cell with transparent safety margin, align feet at 85 percent of cell height. Never cross cell boundaries. Six rows TOP TO BOTTOM: shield: giant walking green dollar banknote folded into a heavy shield with claw feet; drone: floating paired dollar and won coins with two opposite exchange arrows forming wings; bomb: round coin purse with red margin-call fuse; ghost: monstrous white glove hand emerging from a navy institutional suit cuff; rubble: squat walking bundle of banknotes with teeth; enforcer boss: huge clenched institutional fist with navy cuff, gold dollar cufflink and a tiny vault face. Boss occupies same cell boundaries, broader muscular silhouette. Currency and recognizable company-logo motifs are integral body shapes, not text labels. No scene, floor shadows, typography, extra icons, watermarks. Square overall canvas, uniform cells. All six rows and four columns must be complete.",
+      "rowCuts": [
+        0,
+        191,
+        392,
+        584,
+        774,
+        939,
+        1254
+      ]
+    },
+    {
+      "id": "algorithm-v2",
+      "name": "3장 — 기술주 괴물",
+      "prompt": "Use case: stylized-concept. Production pixel-art sprite sheet for finance action roguelite The Liquidation of Penny. TRUE TRANSPARENT BACKGROUND. Exactly 4 columns by 6 rows in a perfectly uniform grid, no borders, no labels. Each cell one isolated full-body monster, chunky deliberate pixel art, bold dark outline, coarse visible square pixels, 3-tone shading, small-sprite readability, no blur. Each row repeats SAME character across 4 poses: idle, attack anticipation, strong melee attack, recovery. Facing RIGHT, side view or 3/4 side. Center each sprite within its cell with transparent safety margin, align feet at 85 percent of cell height. Never cross cell boundaries. Six rows TOP TO BOTTOM: shield: silver bitten-apple emblem transformed into an armored crab; drone: green eye-shaped GPU circuit logo transformed into a flying mechanical eye; bomb: red stylized T electric-car emblem turned into a charged battery imp; ghost: four red blue green yellow search-ring segments forming a digital serpent; rubble: four colored window panes forming a tiny walking block golem; algorithm boss: gigantic green GPU eye-headed martial robot with black leather-jacket torso, powerful fists and legs. Boss occupies same cell boundaries, broader muscular silhouette. Currency and recognizable company-logo motifs are integral body shapes, not text labels. No scene, floor shadows, typography, extra icons, watermarks. Square overall canvas, uniform cells. All six rows and four columns must be complete.",
+      "rowCuts": [
+        0,
+        195,
+        376,
+        549,
+        755,
+        910,
+        1254
+      ]
+    },
+    {
+      "id": "central-v2",
+      "name": "4장 — 투자자와 중앙은행",
+      "prompt": "Use case: stylized-concept. Production pixel-art sprite sheet for finance action roguelite The Liquidation of Penny. TRUE TRANSPARENT BACKGROUND. Exactly 4 columns by 6 rows in a perfectly uniform grid, no borders, no labels. Each cell one isolated full-body monster, chunky deliberate pixel art, bold dark outline, coarse visible square pixels, 3-tone shading, small-sprite readability, no blur. Each row repeats SAME character across 4 poses: idle, attack anticipation, strong melee attack, recovery. Facing RIGHT, side view or 3/4 side. Center each sprite within its cell with transparent safety margin, align feet at 85 percent of cell height. Never cross cell boundaries. Six rows TOP TO BOTTOM: shield: walking marble bank facade carrying a bond certificate shield; drone: winged gold pocket watch with exchange arrows; bomb: brass money-printing machine with red pressure gauge; ghost: spectral elderly investor with round glasses, silver hair and suit, holding a green ledger, caricature inspired by Warren Buffett; rubble: disembodied banker hand walking on fingers with gold signet ring; central boss: massive monstrous central-banker with silver hair, spectacles, navy suit, dollar tie, enormous brass gauntlets shaped like interest-rate arrows. Boss occupies same cell boundaries, broader muscular silhouette. Currency and recognizable company-logo motifs are integral body shapes, not text labels. No scene, floor shadows, typography, extra icons, watermarks. Square overall canvas, uniform cells. All six rows and four columns must be complete.",
+      "rowCuts": [
+        0,
+        194,
+        389,
+        586,
+        809,
+        983,
+        1254
+      ]
+    },
+    {
+      "id": "market-v2",
+      "name": "5장 — 시장의 포식자",
+      "prompt": "Use case: stylized-concept. Production pixel-art sprite sheet for finance action roguelite The Liquidation of Penny. TRUE TRANSPARENT BACKGROUND. Exactly 4 columns by 6 rows in a perfectly uniform grid, no borders, no labels. Each cell one isolated full-body monster, chunky deliberate pixel art, bold dark outline, coarse visible square pixels, 3-tone shading, small-sprite readability, no blur. Each row repeats SAME character across 4 poses: idle, attack anticipation, strong melee attack, recovery. Facing RIGHT, side view or 3/4 side. Center each sprite within its cell with transparent safety margin, align feet at 85 percent of cell height. Never cross cell boundaries. Six rows TOP TO BOTTOM: shield: muscular emerald bull banker carrying dollar coin shield; drone: flying red bear-head coin with jagged wings; bomb: inflated transparent violet speculative bubble trapping a gold dollar and crimson cracks; ghost: elongated invisible-hand monster in dark suit cuff grasping glowing stock emblems; rubble: tiny multi-logo conglomerate beast with bitten apple, green eye and red T medallions; market boss: towering half-bull half-bear market emperor, gold dollar crown, broad black suit, mismatched red and emerald boxing fists, monstrous face. Boss occupies same cell boundaries, broader muscular silhouette. Currency and recognizable company-logo motifs are integral body shapes, not text labels. No scene, floor shadows, typography, extra icons, watermarks. Square overall canvas, uniform cells. All six rows and four columns must be complete.",
+      "rowCuts": [
+        0,
+        199,
+        390,
+        591,
+        772,
+        947,
+        1254
+      ]
+    }
+  ]
+}
