@@ -1,3 +1,5 @@
+import {createEquipmentUI} from './equipment-ui.mjs';
+import {EQUIPMENT} from './equipment.mjs';
 import {drawExploration} from './exploration.mjs';
 import {drawTerrain} from './terrain-art.mjs';
 import {inventory,hud as totemHUD,drawRelic,chooseRelic} from './totem-ui.mjs';
@@ -19,6 +21,8 @@ class AudioFX{
  play(name){const sounds={swing:()=>this.tone(170,.08,'triangle',.035,80),hit:()=>this.tone(100,.08,'square',.024,42),jump:()=>this.tone(280,.1,'sine',.035,500),dash:()=>this.tone(400,.13,'sawtooth',.018,60),hurt:()=>this.tone(130,.2,'sawtooth',.035,35),shot:()=>this.tone(580,.16,'sine',.025,230),roar:()=>this.tone(80,.35,'sawtooth',.028,45),explosion:()=>this.tone(110,.26,'sawtooth',.05,26),circuit:()=>{this.tone(600,.24,'sine',.05,60);this.tone(55,1,'sine',.018);},profit:()=>{this.tone(280,.3,'triangle',.05,1100);this.tone(660,.35,'sine',.035,null,.06);},lever:()=>this.tone(150,.28,'sawtooth',.025,450),reward:()=>[440,550,660].forEach((f,i)=>this.tone(f,.22,'triangle',.04,null,i*.08)),clear:()=>[330,440,660,880].forEach((f,i)=>this.tone(f,.3,'sine',.035,null,i*.1)),bossdown:()=>{this.tone(90,.65,'sawtooth',.04,28);[440,660,880].forEach((f,i)=>this.tone(f,.4,'triangle',.04,null,.4+i*.15));}};sounds[name]?.();}
 }
 const audioFX=new AudioFX();
+let equipmentStorage;try{equipmentStorage=window.localStorage;}catch{}
+const equipmentUI=createEquipmentUI({storage:equipmentStorage,showModal,hideModal,getState:()=>game?.state});
 function archiveRun(){try{const rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');const data=game.log.export();const kept=Array.isArray(rows)?rows.filter(r=>r.run_id!==data.run_id):[];kept.push(data);localStorage.setItem('penny-runs-v1',JSON.stringify(kept.slice(-5)));}catch{showNotice('저장 공간이 부족합니다. 종료 전에 현재 로그를 다운로드하세요.',4);}}
 function exportRuns(){let rows=[];try{rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');}catch{}if(!Array.isArray(rows))rows=[];if(game?.log.started)rows=[...rows.filter(r=>r.run_id!==game.log.runId),game.log.export()];const u=URL.createObjectURL(new Blob([JSON.stringify({schema_version:1,runs:rows},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download='penny-play-sessions.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function clearInput(){input.left=input.right=input.attack=input.down=input.up=false;game?.action('jump_release');}
@@ -57,11 +61,11 @@ function pauseGame(help=false){
  if(!loaded||!game||!['playing','paused','title'].includes(game.state))return;
  const fromTitle=game.state==='title';if(!fromTitle)game.state='paused';clearInput();
  const buildText=game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'아직 편입한 종목이 없습니다.';
- showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 누르는 길이로 높이 조절 · 2단 점프 · ↓+C 내려가기</span><span><kbd>X</kbd> 3단 공격 · ↑+X 위 / 공중 ↓+X 아래</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>벽 방향 + C</kbd> 벽 점프 · 벽 방향 유지 시 미끄러짐</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
+ showModal(`<span class="eyebrow">${help?'HOW TO PLAY':'TRADING PAUSED'}</span><h2 id="modal-title">${help?'시장에서 살아남는 법':'잠시 거래를 멈춥니다'}</h2><div class="help-grid"><span><kbd>← →</kbd> 이동</span><span><kbd>C</kbd> 누르는 길이로 높이 조절 · 2단 점프 · ↓+C 내려가기</span><span><kbd>X</kbd> 3단 공격 · ↑+X 위 / 공중 ↓+X 아래</span><span><kbd>Z</kbd> 무적 대시</span><span><kbd>벽 방향 + C</kbd> 벽 점프 · 벽 방향 유지 시 미끄러짐</span><span><kbd>A</kbd> 수익 25 이상일 때 익절</span><span><kbd>S</kbd> 8초 레버리지</span><span><kbd>D</kbd> 적·투사체 일시 정지</span><span><kbd>↑</kbd> 출구 / 거래소 이용</span></div><p>공격이 적중하면 미실현 수익이 쌓이고, 피격 시 25%를 잃습니다. 익절로 수익을 소모해 강한 공격을 쓰세요.<br>레버리지는 피해 ×1.65. 8초 안에 2마리 처치 또는 피해 160을 달성하면 시드 +18, 실패하면 체력 −18입니다.</p>${!fromTitle?`<p>장착 장비 · ${Object.values(game.equipment).filter(Boolean).map(id=>EQUIPMENT.find(e=>e.id===id)?.name).join(' · ')||'없음'}<br>현재 포트폴리오 · ${buildText}</p>`:''}<div class="modal-actions">${!fromTitle?'<button class="secondary" id="restart-request">처음부터 다시</button>':''}<button class="primary" id="resume">${fromTitle?'확인':'계속하기'}</button></div>`,'pause');
  $('resume').onclick=()=>{if(!fromTitle){game.state='playing';stageMusic.setScene('playing',game.spec.chapter);}hideModal();};if($('restart-request'))$('restart-request').onclick=()=>showRestartConfirm();
 }
 function showRestartConfirm(){showModal('<span class="eyebrow">RESTART RUN</span><h2 id="modal-title">이번 도전을 종료할까요?</h2><p>이번 도전에서 모은 시드와 종목은 사라집니다. 이전에 저장된 투자 지식은 유지됩니다.</p><div class="modal-actions"><button class="secondary" id="cancel-restart">돌아가기</button><button class="primary" id="confirm-restart">새로 시작</button></div>','confirm');$('cancel-restart').onclick=()=>pauseGame();$('confirm-restart').onclick=startGame;}
-function startGame(chapter=1){if(!loaded)return;if(game?.log.started&&!game.log.ended){game.log.end('restart');archiveRun();}hideModal();clearInput();savedRun=false;game=new Game({onEvent:event,knowledge:progress.knowledge});if(chapter===2){game.prepareChapterTwo();game.setRoom(5,false);} $('screen').classList.add('hidden');for(const id of ['hud','skills'])$(id).classList.remove('hidden');game.start();stageMusic.setScene('playing',game.spec.chapter);stageMusic.resumeFromGesture();canvas.focus({preventScroll:true});audioFX.play('reward');}
+function startGame(chapter=1){if(!loaded)return;if(game?.log.started&&!game.log.ended){game.log.end('restart');archiveRun();}hideModal();clearInput();savedRun=false;game=new Game({onEvent:event,knowledge:progress.knowledge,equipment:equipmentUI.loadout()});if(chapter===2){game.prepareChapterTwo();game.setRoom(5,false);} $('screen').classList.add('hidden');for(const id of ['hud','skills'])$(id).classList.remove('hidden');game.start();stageMusic.setScene('playing',game.spec.chapter);stageMusic.resumeFromGesture();canvas.focus({preventScroll:true});audioFX.play('reward');}
 function backToTitle(){$('totem-hud').classList.add('hidden');hideModal();clearInput();stageMusic.setScene('title',1);game=new Game({onEvent:event,knowledge:progress.knowledge});$('screen').classList.remove('hidden');for(const id of ['hud','skills','boss-hud','leverage','notice','room-toast'])$(id).classList.add('hidden');updateSaveNote();}
 function updateSaveNote(){$('save-note').textContent=progress.runs?`누적 ${progress.runs}회 도전 · 투자 지식 ${progress.knowledge} · 시작 체력 +${Math.min(20,progress.knowledge*2)}`:'사망해도 투자 지식은 남습니다.';}
 function bind(){
@@ -77,13 +81,14 @@ function bind(){
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(e.key==='Tab'&&!$('modal').classList.contains('hidden')){const bs=[...$('modal').querySelectorAll('button:not(:disabled)')];if(bs.length){if(e.shiftKey&&document.activeElement===bs[0]){e.preventDefault();bs.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===bs.at(-1)){e.preventDefault();bs[0].focus();}}return;}
   if(e.code==='KeyI'&&!e.repeat){e.preventDefault();if(modalKind==='totems')closeTotems();else openTotems();return;}
+  if(modalKind==='equipment'){if(e.code==='Escape'){e.preventDefault();equipmentUI.close();}return;}
   if(e.code==='Escape'&&modalKind==='trial'){e.preventDefault();game.chooseTrial(false);return;}
   if(e.code==='Escape'&&modalKind==='relic_choice'){e.preventDefault();game.chooseRelic('leave');return;}
   if(e.code==='Escape'&&modalKind==='totems'){e.preventDefault();closeTotems();return;}
   if(e.code==='Escape'){e.preventDefault();if(modalKind==='pause')$('resume')?.click();else if(game.state==='playing')pauseGame();else if(modalKind==='shop')game.closeShop();return;}
   if(e.code==='Slash'&&!e.repeat){e.preventDefault();pauseGame(true);return;}
   if(modalKind==='reward'&&/^Digit[123]$/.test(e.code)){e.preventDefault();const card=modalCards[Number(e.code.at(-1))-1];if(card)game.chooseReward(card.id);return;}
-  if(game.state==='title'&&e.code==='Enter'&&!e.repeat&&modalKind===''){e.preventDefault();startGame();return;}
+  if(game.state==='title'&&e.code==='Enter'&&!e.repeat&&modalKind===''&&document.activeElement?.tagName!=='BUTTON'){e.preventDefault();startGame();return;}
   if(game.state!=='playing')return;
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space',...Object.keys(mapping)].includes(e.code))e.preventDefault();
   if(e.code==='ArrowUp')input.up=true;if(e.code==='ArrowDown')input.down=true;if(e.code==='ArrowLeft')input.left=true;if(e.code==='ArrowRight')input.right=true;if(e.code==='KeyX')input.attack=true;
@@ -189,7 +194,7 @@ function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fil
 }
 function tick(now){const dt=Math.min((now-last)/1000||0,1/30);last=now;game.update(dt,input);stageMusic.update(dt);render();if(game.state!=='title')updateHUD();requestAnimationFrame(tick);}
 async function init(){
- game=new Game({onEvent:event,knowledge:progress.knowledge});bind();updateSaveNote();
+ game=new Game({onEvent:event,knowledge:progress.knowledge});bind();updateSaveNote();equipmentUI.renderTitle();
  try{const names=['hero','rubble','bomb','ghost','boss','alley','institution','shield','drone','enforcer'];const imgs=await Promise.all(names.map(n=>imageLoad(`./${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=['alley','institution'].includes(n)?imgs[i]:atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}const bank=await imageLoad('./central-bank-monsters.png');
  const cuts=[0,285,510,750,1020,1402],types=['shield','drone','bomb','ghost','central'];
  for(let row=0;row<types.length;row++){const strip=document.createElement('canvas');strip.width=bank.width;strip.height=cuts[row+1]-cuts[row];strip.getContext('2d').drawImage(bank,0,cuts[row],bank.width,strip.height,0,0,bank.width,strip.height);assets['bank-'+types[row]]=atlas(strip,4,1,false);}
