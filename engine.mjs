@@ -1,3 +1,5 @@
+import {EquipmentEffects} from './equipment-effects.mjs';
+import {updateSpecialPattern} from './boss-patterns.mjs';
 import {applyStartingEquipment} from './equipment.mjs';
 import {buildLaterChapters} from './later-chapters.mjs';
 import {buildChapterOne} from './chapter-one.mjs';
@@ -63,14 +65,14 @@ export function moveBody(body,dt,platforms,width){
 }
 export class Game{
  constructor({random=Math.random,onEvent=()=>{},knowledge=0,equipment=null}={}){
-  this.random=random;this.onEvent=onEvent;this.knowledge=knowledge;this.state='title';this.enemies=[];this.projectiles=[];this.hazards=[];this.particles=[];this.texts=[];this.effects=[];this.room=0;this.t=0;this.camera=0;this.cameraY=0;this.shake=0;this.market=0;this.marketClock=0;this.freeze=0;this.hitstop=0;this.totalTime=0;this.kills=0;this.spent=0;this.build=[];this.clearedRooms=0;this.promoted=false;this.rank='PENNY STOCK';this.stats={atk:18,speed:255,crit:.05,armor:0,dividend:0,profitHeal:0,profitGain:0,short:0,circuitExtra:0,circuitReduce:0,dashFactor:1,guardPierce:0,circuitHeal:0};this.player=this.newPlayer();applyStartingEquipment(this,equipment);this.totems=new TotemSystem(this);this.setRoom(0,false);this.log=new RunLog(this);
+  this.random=random;this.onEvent=onEvent;this.knowledge=knowledge;this.state='title';this.enemies=[];this.projectiles=[];this.hazards=[];this.particles=[];this.texts=[];this.effects=[];this.room=0;this.t=0;this.camera=0;this.cameraY=0;this.shake=0;this.market=0;this.marketClock=0;this.freeze=0;this.hitstop=0;this.totalTime=0;this.kills=0;this.spent=0;this.build=[];this.clearedRooms=0;this.promoted=false;this.rank='PENNY STOCK';this.stats={atk:18,speed:255,crit:.05,armor:0,dividend:0,profitHeal:0,profitGain:0,short:0,circuitExtra:0,circuitReduce:0,dashFactor:1,guardPierce:0,circuitHeal:0};this.player=this.newPlayer();applyStartingEquipment(this,equipment);this.equipmentEffects=new EquipmentEffects(this);this.totems=new TotemSystem(this);this.setRoom(0,false);this.log=new RunLog(this);
  }
  newPlayer(){const hp=100+Math.min(20,this.knowledge*2);return{x:120,y:540,w:17.85,h:33.32,vx:0,vy:0,grounded:false,facing:1,hp,maxHp:hp,inv:0,jumps:0,coyote:0,jumpBuffer:0,attack:0,attackMove:null,jumpHeld:false,jumpCut:false,attackCD:0,combo:0,comboClock:0,dash:0,dodgeWindow:0,dashCD:0,profit:0,profitCD:0,leverageCD:0,circuitCD:0,hurt:0,gold:30,leverage:0,leverageDamage:0,leverageKills:0};}
  emit(type,data={}){this.onEvent({type,...data});}
  start(){this.state='playing';this.log.start();this.emit('room',{room:this.spec});this.emit('notice',{text:'← → 이동 · C 2단 점프 · X 공격 · Z 대시',duration:7});}
  setRoom(index,announce=true){
   if(!ROOM_SPECS[index])return;
-  if(this.log?.started&&this.spec.kind==='shop'&&!this.rewardGiven){this.rewardGiven=true;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});}if(this.log?.started)this.log.add('stage_exit',{duration:this.totalTime-this.log.stageAt,cleared:this.rewardGiven||this.spec.kind==='shop'});this.totems.roomChanged();this.room=index;this.spec=ROOM_SPECS[index];this.width=this.spec.width;this.worldTop=['shop','boss'].includes(this.spec.kind)?70:-360;this.platforms=[{x:0,y:620,w:this.width,h:100,ground:true},...this.spec.platforms.map(([x,y,w])=>({x,y,w,h:18}))];
+  if(this.log?.started&&this.spec.kind==='shop'&&!this.rewardGiven){this.rewardGiven=true;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});}if(this.log?.started)this.log.add('stage_exit',{duration:this.totalTime-this.log.stageAt,cleared:this.rewardGiven||this.spec.kind==='shop'});this.totems.roomChanged();this.equipmentEffects.resetRoom();this.room=index;this.spec=ROOM_SPECS[index];this.width=this.spec.width;this.worldTop=['shop','boss'].includes(this.spec.kind)?70:-360;this.platforms=[{x:0,y:620,w:this.width,h:100,ground:true},...this.spec.platforms.map(([x,y,w])=>({x,y,w,h:18}))];
   this.terrain=terrainFor(this.spec,index);this.platforms.push(...this.terrain.walls,...this.terrain.ledges);
   this.marketPeriod=[24,20,18,18,16][this.spec.chapter-1];this.marketClock=Math.min(this.marketClock,this.marketPeriod-4);this.pressureClock=0;
   this.enemies=[...this.spec.enemies,...this.terrain.extra].map(([type,x,bottom,elite])=>this.makeEnemy(type,x,bottom,elite));this.projectiles=[];this.hazards=[];this.effects=[];this.particles=[];this.texts=[];this.doorOpen=this.spec.kind==='shop';this.rewardGiven=false;this.clearTimer=-1;this.camera=0;this.cameraY=0;this.freeze=0;this.hitstop=0;this.shopVisited=false;
@@ -120,7 +122,7 @@ export class Game{
    if(p.profit<25){this.emit('notice',{text:'공격을 적중시켜 미실현 수익을 25 이상 모으세요.',duration:2});return;}
    this.log.add('attack',{skill:'profit'});const saved=p.profit;p.profit=0;p.profitCD=5;p.inv=Math.max(p.inv,.35);this.swing(185,this.damage()*(1+saved/30)*(1+this.stats.short*.2),true);this.heal(this.stats.profitHeal);this.effects.push({type:'profit',x:p.x+p.w/2,y:p.y+p.h/2,facing:p.facing,life:.45,max:.45});this.shake=8;this.emit('sound',{name:'profit'});this.emit('notice',{text:`익절! 수익 ${Math.floor(saved)}% 확정`,duration:1.8});
   }
-  if(name==='leverage'&&p.leverageCD<=0){p.leverage=8;p.leverageCD=24;if(this.exploration)explain(this,'leverage','레버리지',['노출을 늘려 이익과 손실의 크기를 확대합니다.','게임에서는 공격 강화와 상환 실패 비용으로 단순화했습니다.']);p.leverageDamage=0;p.leverageKills=0;this.emit('sound',{name:'lever'});this.emit('notice',{text:'8초 안에 2마리 처치 또는 피해 160! 실패 시 체력 −18 (최소 1)',duration:4});}
+  if(name==='leverage'&&p.leverageCD<=0){p.leverage=8;p.leverageCD=24;this.equipmentEffects.leverage();if(this.exploration)explain(this,'leverage','레버리지',['노출을 늘려 이익과 손실의 크기를 확대합니다.','게임에서는 공격 강화와 상환 실패 비용으로 단순화했습니다.']);p.leverageDamage=0;p.leverageKills=0;this.emit('sound',{name:'lever'});this.emit('notice',{text:'8초 안에 2마리 처치 또는 피해 160! 실패 시 체력 −18 (최소 1)',duration:4});}
   if(name==='circuit'&&p.circuitCD<=0){this.totems.signal('circuit');this.freeze=2+this.stats.circuitExtra;p.circuitCD=Math.max(8,18-this.stats.circuitReduce);this.heal(this.stats.circuitHeal);this.emit('sound',{name:'circuit'});this.emit('notice',{text:'TRADING HALT · 적과 투사체 정지',duration:2});}
   if(name==='interact'){
    if(interactExploration(this))return;
@@ -157,10 +159,10 @@ export class Game{
   if(!this.relic.offers.includes(id)||!this.totems.acquire(id))return false;
   this.relic.taken=true;this.totems.log('totem_reward_selected',id,{offers:[...this.relic.offers]});this.state='totems';this.emit('totems',{acquired:id});return true;
  }
- damage(){return this.stats.atk*(this.market===1?1.15:1)*(this.market===2?1+this.stats.short*.3:1)*(this.player.leverage>0?1.65:1);}
+ damage(){return this.stats.atk*this.equipmentEffects.damage*(this.market===1?1.15:1)*(this.market===2?1+this.stats.short*.3:1)*(this.player.leverage>0?1.65:1);}
  attack(direction='side'){const p=this.player;if(p.attackCD>0||p.dash>0||p.hurt>0)return;
   this.log.add('attack',{skill:'basic',direction});p.combo=p.comboClock>0?(p.combo+1)%3:0;p.comboClock=.9;
-  p.attack=.23;p.attackCD=p.combo===2?.4:.27;
+  p.attack=.23;p.attackCD=(p.combo===2?.4:.27)*this.equipmentEffects.attackInterval;
   p.attackMove={direction,facing:p.facing,elapsed:0,struck:false,range:p.combo===2?110:85,damage:this.damage()*(p.combo===2?1.4:1)};
  }
  updateAttack(dt){const p=this.player,m=p.attackMove;if(!m)return;m.elapsed+=dt;
@@ -170,7 +172,7 @@ export class Game{
  }
  swing(range,damage,profit,direction='side',facing=this.player.facing){
   const p=this.player,hit=direction==='side'?{x:facing===1?p.x+p.w-6:p.x-range+6,y:p.y-20,w:range,h:p.h+40}:{x:p.x-16,y:direction==='up'?p.y-range:p.y+p.h-4,w:p.w+32,h:range};let count=0;let firstTarget=null;
-  for(const e of this.enemies){if(e.dead||!overlap(hit,e))continue;firstTarget??=e;if(profit)this.totems.signal('profit',e);const crit=this.random()<this.stats.crit;this.hitEnemy(e,damage*(crit?2:1),direction==='side'?facing:0,crit,profit);count++;if(!profit&&p.combo===2)this.totems.signal('finisher',e);if(!profit)p.profit=clamp(p.profit+8+this.stats.profitGain,0,100);}
+  for(const e of this.enemies){if(e.dead||!overlap(hit,e))continue;firstTarget??=e;if(profit)this.totems.signal('profit',e);const crit=this.random()<this.stats.crit;this.hitEnemy(e,damage*(crit?2:1),direction==='side'?facing:0,crit,profit);count++;if(!profit)this.equipmentEffects.hit();if(!profit&&p.combo===2)this.totems.signal('finisher',e);if(!profit)p.profit=clamp(p.profit+8+this.stats.profitGain,0,100);}
   if(count)this.log.add('attack_hit',{skill:profit?'profit':'basic',targets:count,direction,airborne:!p.grounded});
   if(count&&!profit&&direction==='down'&&!p.grounded){p.vy=-480;p.jumpCut=false;p.jumps=1;p.dashCD=0;this.log.add('pogo_success',{targets:count});this.burst(p.x+p.w/2,p.y+p.h,'#f4bc76',10);}
   if(count&&!profit)this.totems.signal('hit',firstTarget);
@@ -180,7 +182,7 @@ export class Game{
   if(e.dead)return;
   if(e.totemWeak>0)amount*=1.25;
   if(e.armored&&!pierce&&e.facing===-direction&&['idle','windup'].includes(e.state)){amount*=Math.min(1,.3+this.stats.guardPierce);this.floatText(e.x+e.w/2,e.y-31,'정면 방어','#82d0de',11);}
-  const dealt=Math.min(e.hp,amount);e.hp-=amount;e.flash=.13;e.inv=.08;if(!e.boss)e.x=clamp(e.x+direction*20,0,this.width-e.w);
+  amount*=this.equipmentEffects.consumePrediction();const dealt=Math.min(e.hp,amount);e.hp-=amount;e.flash=.13;e.inv=.08;if(!e.boss)e.x=clamp(e.x+direction*20,0,this.width-e.w);
   this.floatText(e.x+e.w/2,e.y-12,String(Math.round(amount)),crit?'#fbd88e':'#edf0e8',crit?22:16);
   this.burst(e.x+e.w/2,e.y+e.h*.5,crit?'#ffd47e':'#d4dce3',7);
   if(this.player.leverage>0)this.player.leverageDamage+=dealt;
@@ -190,7 +192,7 @@ export class Game{
   // Apply once at player damage resolution, including enemy-owned projectiles and hazards.
   if(source?.type&&['attack','contact','projectile','explosion','hazard'].includes(kind))amount*=.9;
   if(kind==='attack'&&source?.attackWeak>0)amount*=.75;
-  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&kind!=='spikes'&&kind!=='mine'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor,0,.55))*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind,source_type:source?.type??(kind==='hazard'?'environment':null)});p.attackMove=null;p.attack=0;p.jumpCut=false;p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*.75);p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
+  const p=this.player;if(this.state!=='playing')return false;if(p.inv>0){if(kind!=='contact'&&kind!=='fall'&&kind!=='spikes'&&kind!=='mine'&&p.dodgeWindow>0&&!p.evadeCounted){p.evadeCounted=true;this.totems.signal('evade');this.log.add('dodge_success');this.equipmentEffects.evade();}return false;}this.totems.signal('hurt');const real=Math.max(1,Math.round(amount*(1-this.totems.guard)*(1-clamp(this.stats.armor+this.equipmentEffects.armor,0,.55))*this.equipmentEffects.incoming*(this.market===2?1.15:1)));p.hp=Math.max(0,p.hp-real);this.log.add('damage_taken',{amount:real,source_x:sourceX,source_id:source?.id??null,damage_kind:kind,source_type:source?.type??(kind==='hazard'?'environment':null)});p.attackMove=null;p.attack=0;p.jumpCut=false;p.inv=.95;p.hurt=.22;p.profit=Math.floor(p.profit*this.equipmentEffects.profitRetention());this.equipmentEffects.hurt();p.vx=(p.x>sourceX?1:-1)*240;p.vy=-220;this.shake=7;this.floatText(p.x,p.y-15,`−${real}`,'#ff8880',20);this.emit('sound',{name:'hurt'});if(p.hp<=0)this.finish(false);return true;
  }
  heal(amount){if(amount<=0)return;const p=this.player,actual=Math.min(p.maxHp-p.hp,amount);p.hp+=actual;if(actual>0)this.floatText(p.x,p.y-20,`+${actual} HP`,'#88d4ac',15);}
  settleLeverage(){const p=this.player;const ok=p.leverageDamage>=160||p.leverageKills>=2;p.leverage=0;if(ok){p.gold+=18;this.emit('notice',{text:'상환 성공 · 추가 시드 +18',duration:3});this.emit('sound',{name:'reward'});}else{const cost=Math.min(18,Math.max(0,p.hp-1));p.hp-=cost;this.log.add('health_cost',{amount:cost,reason:'leverage_repayment'});this.floatText(p.x,p.y-20,'상환 −18 HP','#ff9b7a',16);this.emit('notice',{text:'레버리지 상환 · 체력 −18',duration:3});}}
@@ -207,7 +209,7 @@ export class Game{
  update(dt,input={}){
   dt=clamp(dt,0,1/30);this.t+=dt;
   if(this.state!=='playing')return;
-  this.totalTime+=dt;this.totems.update(dt,input);
+  this.totalTime+=dt;this.totems.update(dt,input);this.equipmentEffects.update(dt);
   if(this.relic?.hidden&&!this.relic.revealed&&Math.hypot(this.player.x-this.relic.x,this.player.y-this.relic.y)<180){this.relic.revealed=true;this.log.add('secret_found');this.emit('notice',{text:'숨겨진 보관함 발견',duration:2});}
   if(this.trialEnemy?.dead&&this.relic?.trialStarted&&!this.relic.trialComplete){this.relic.trialComplete=true;this.relic.waitForExit=false;this.player.gold+=25;const extra=TOTEMS.find(t=>!this.totems.owned.includes(t.id)&&!this.relic.offers.includes(t.id));if(extra)this.relic.offers.push(extra.id);this.log.add('elite_trial_clear',{offers:this.relic.offers});this.emit('notice',{text:'선택 도전 완료 · 시드 +25 · 선택지 추가 · 상자를 회수하세요',duration:3});}
 
@@ -275,6 +277,7 @@ export class Game{
   if(e.grounded&&this.terrain.walls.some(w=>Math.abs((e.x+e.w/2)-(w.x+w.w/2))<e.w+85)){e.vy=-580;e.grounded=false;}
   const p=this.player;e.anim+=dt;e.timer-=dt;const dx=p.x+p.w/2-(e.x+e.w/2),dy=(p.y+p.h/2)-(e.y+e.h/2),dist=Math.abs(dx);
   if(!e.activated){if(dist<(e.encounterRange??610)){e.activated=true;this.log.add('enemy_encounter',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});}else return;}
+  if(updateSpecialPattern(this,e))return;
   if(e.type==='market'){this.updateMarket(e,dt,dx);return;}
   if(e.type==='central'){this.updateCentral(e,dt,dx);return;}
   if(e.type==='algorithm'){this.updateAlgorithm(e,dt,dx);return;}
@@ -364,7 +367,7 @@ export class Game{
    this.emit('notice',{text:['금리 인상 · 순차 폭발 사이로 이동하세요','유동성 공급 · 느린 탄막을 넘으세요','지급준비율 인상 · 가운데 안전 구역으로!'][e.pattern],duration:3});
    if(e.pattern!==1){for(let x=80;x<this.width-80;x+=140){if(e.pattern===2&&Math.abs(x+45-this.width/2)<190)continue;this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:90,delay:1.4+(e.pattern===0?x/this.width*1.7:0),life:.4,damage:phase===2?25:21,hit:false});}}
   }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=2;
-   if(e.pattern===1){const x=e.x+e.w/2,y=e.y+45;for(let i=-3;i<=3;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:-Math.cos(i*.2)*170,vy:Math.sin(i*.2)*170,r:9,damage:20,life:8,color:'#f1d58b'});}
+   if(e.pattern===1){const x=e.x+e.w/2,y=e.y+45;for(let i=-3;i<=3;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:e.facing*Math.cos(i*.2)*170,vy:Math.sin(i*.2)*170,r:9,damage:20,life:8,color:'#f1d58b'});}
   }else if(e.state==='attack'&&e.timer<=0){e.state='recover';e.timer=phase===2?1.2:2;}
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.6;}
  }
@@ -380,9 +383,9 @@ export class Game{
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.6;}
  }
  updateThreats(dt){
-  for(const b of this.projectiles){b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(overlap({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},this.player)){this.hurt(b.damage,b.x,'projectile',b.source);b.life=0;}if(b.x<0||b.x>this.width||b.y>640||b.y<70)b.life=0;}
+  for(const b of this.projectiles){if(b.life<=0)continue;b.life-=dt;if(b.life<=0)continue;b.x+=b.vx*dt;b.y+=b.vy*dt;if(overlap({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},this.player)){this.hurt(b.damage,b.x,'projectile',b.source);b.life=0;}if(b.x<0||b.x>this.width||b.y>640||b.y<70)b.life=0;}
   this.projectiles=this.projectiles.filter(b=>b.life>0);
-  for(const h of this.hazards){h.delay-=dt;if(h.delay<=0){h.life-=dt;if(!h.hit){h.hit=true;this.burst(h.x+h.w/2,610,'#d79572',13);this.emit('sound',{name:'explosion'});}if(overlap({x:h.x,y:455,w:h.w,h:165},this.player))this.hurt(h.damage,h.x,'hazard',h.source);}}
+  for(const h of this.hazards){if(h.life<=0)continue;h.delay-=dt;if(h.delay<=0){h.life-=dt;if(h.life<=0)continue;if(!h.hit){h.hit=true;this.burst(h.x+h.w/2,610,'#d79572',13);this.emit('sound',{name:'explosion'});}if(overlap({x:h.x,y:455,w:h.w,h:165},this.player))this.hurt(h.damage,h.x,'hazard',h.source);}}
   this.hazards=this.hazards.filter(h=>h.life>0);
  }
 }
