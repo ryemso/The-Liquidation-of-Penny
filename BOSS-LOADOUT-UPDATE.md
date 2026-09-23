@@ -14,3 +14,6 @@ Upper bosses retain normal and previous special patterns; every eighth cycle alt
 At most two living aides per boss; zero seed drops; aides disappear on boss death. New actions execute after 1.4s natural windup, freeze with circuit and retain recovery. Financial names are game analogies, not literal definitions.
 
 Validation: 107 tests pass, including DOM-handler isolation, alternation, summon caps/cleanup, issue HP cost, takeover shield removal and bidirectional projectiles. Existing warning expectation changed to assert notices are absent. JavaScript syntax checks pass.
+
+## Cadence adjustment
+Upper bosses now debut advanced patterns on their second attack cycle, repeating every three cycles above half HP and every two cycles at or below half HP. Cadence uses the last advanced cycle so a phase transition cannot cause back-to-back advanced attacks. Windup, recovery and summon caps are unchanged. Validation: 110 tests pass, including all three upper bosses and the exact half-HP boundary.

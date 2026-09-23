@@ -1,12 +1,16 @@
-import {beginAdvanced,fireAdvanced} from './advanced-boss.mjs';
+import {ADVANCED,beginAdvanced,fireAdvanced} from './advanced-boss.mjs';
 const names={boss:'펌프 앤 덤프',enforcer:'숏 스퀴즈',algorithm:'역추적 주문',central:'긴축 파동',market:'섹터 순환'};
-// Every fourth cycle replaces a normal attack. All danger lanes are locked at telegraph time.
+// Upper bosses debut advanced attacks on cycle 2, then every 3 cycles (2 at half HP).
 export function updateSpecialPattern(g,e){
  if(!e.boss)return false;
  if(e.specialActive){fireAdvanced(g,e);e.vx=0;if(e.timer<=0){e.specialActive=false;e.advanced=null;e.state='recover';e.timer=1.8;}return true;}
  if(e.state!=='idle'||e.timer>0)return false;
- e.specialCycle=(e.specialCycle||0)+1;if(e.specialCycle%4!==0)return false;
- if(e.specialCycle%8===0&&beginAdvanced(g,e))return true;
+ e.specialCycle=(e.specialCycle||0)+1;
+ const interval=e.hp<=e.maxHp*.5?2:3;
+ if(ADVANCED[e.type]&&e.specialCycle>=2&&(e.lastAdvancedCycle===undefined||e.specialCycle-e.lastAdvancedCycle>=interval)){
+  e.lastAdvancedCycle=e.specialCycle;if(beginAdvanced(g,e))return true;
+ }
+ if(e.specialCycle%4!==0)return false;
  const center=g.player.x+g.player.w/2,source={id:e.id,type:e.type};
  const lane=(x,w,delay)=>g.hazards.push({source,x:Math.max(20,Math.min(g.width-w-20,x)),y:620,w,delay,life:.4,damage:16,hit:false});
  let hint='';
