@@ -1,3 +1,4 @@
+import {PizzaWallet} from './currency.mjs';
 import {createEquipmentUI} from './equipment-ui.mjs';
 import {EQUIPMENT} from './equipment.mjs';
 import {drawExploration} from './exploration.mjs';
@@ -22,6 +23,8 @@ class AudioFX{
 }
 const audioFX=new AudioFX();
 let equipmentStorage;try{equipmentStorage=window.localStorage;}catch{}
+const pizzaWallet=new PizzaWallet(equipmentStorage);
+function updateWallet(){for(const el of document.querySelectorAll('[data-pizza-balance]'))el.textContent=pizzaWallet.balance.toLocaleString();}
 const equipmentUI=createEquipmentUI({storage:equipmentStorage,showModal,hideModal,getState:()=>game?.state});
 function archiveRun(){try{const rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');const data=game.log.export();const kept=Array.isArray(rows)?rows.filter(r=>r.run_id!==data.run_id):[];kept.push(data);localStorage.setItem('penny-runs-v1',JSON.stringify(kept.slice(-5)));}catch{showNotice('저장 공간이 부족합니다. 종료 전에 현재 로그를 다운로드하세요.',4);}}
 function exportRuns(){let rows=[];try{rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');}catch{}if(!Array.isArray(rows))rows=[];if(game?.log.started)rows=[...rows.filter(r=>r.run_id!==game.log.runId),game.log.export()];const u=URL.createObjectURL(new Blob([JSON.stringify({schema_version:1,runs:rows},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download='penny-play-sessions.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
@@ -32,12 +35,13 @@ function hideModal(){delete $('modal-inner').dataset.kind;modalKind='';modalCard
 const fmtTime=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 const cardHTML=(card,i,shop=false)=>`<button class="card" data-card="${card.id}" ${shop&&game.player.gold<card.price?'disabled':''}><span class="card-number">${shop?'':`[${i+1}]`}</span><span class="card-symbol">${card.symbol}</span><span class="tag">${card.tag}</span><h3>${card.name}</h3><p>${card.desc}</p>${shop?`<span class="price">◈ ${card.price}</span>`:''}</button>`;
 function event(e){
+ if(e.type==='currency'){const result=pizzaWallet.credit(e.receipt,e.amount);updateWallet();if(!result.saved){$('wallet-status').textContent='저장 실패 · 이번 접속 중에만 유지';}return;}
  if(e.type==='relic_choice'){stageMusic.setScene('reward',game.spec.chapter);chooseRelic(game,showModal);return;}
  if(e.type==='totems'){openTotems(e.acquired);return;}
  if(e.type==='sound'){audioFX.play(e.name);return;}
  if(e.type==='notice')showNotice(e.text,e.duration);
  if(e.type==='room'){$('room-kicker').textContent=e.room.subtitle;$('room-title').textContent=e.room.name;$('room-toast').classList.remove('hidden');roomUntil=performance.now()+3000;$('footer-location').textContent=e.room.chapterName+' · '+e.room.name;$('chapter-tag').textContent=`CHAPTER 0${e.room.chapter} · ${e.room.chapterName}`;$('boss-hud').classList.toggle('hidden',e.room.kind!=='boss');if(e.room.kind==='boss')$('boss-name').textContent=e.room.bossName||'보스';stageMusic.setScene('playing',e.room.chapter);}
- if(e.type==='reward'){stageMusic.setScene('reward',game.spec.chapter);modalCards=e.cards;showModal(`<span class="eyebrow">ROOM CLEAR · 포트폴리오</span><h2 id="modal-title">다음 투자를 선택하세요</h2><p>하나의 종목을 편입합니다. 효과는 이번 도전이 끝날 때까지 유지됩니다.</p><div class="cards">${e.cards.map((c,i)=>cardHTML(c,i)).join('')}</div><div class="modal-actions"><small>숫자 1 · 2 · 3 또는 카드 클릭</small></div>`,'reward');$('modal-inner').querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>game.chooseReward(b.dataset.card));}
+ if(e.type==='reward'){stageMusic.setScene('reward',game.spec.chapter);modalCards=e.cards;showModal(`<span class="eyebrow">ROOM CLEAR · 포트폴리오</span><h2 id="modal-title">다음 투자를 선택하세요</h2><p>피자스코어 +${game.lastClearPizza} 지급 · 누적 ${pizzaWallet.balance}<br>하나의 종목을 편입합니다. 효과는 이번 도전이 끝날 때까지 유지됩니다.</p><div class="cards">${e.cards.map((c,i)=>cardHTML(c,i)).join('')}</div><div class="modal-actions"><small>숫자 1 · 2 · 3 또는 카드 클릭</small></div>`,'reward');$('modal-inner').querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>game.chooseReward(b.dataset.card));}
  if(e.type==='shop'){stageMusic.setScene('shop',game.spec.chapter);showShop();}
  if(e.type==='trial_choice'){stageMusic.setScene('reward',game.spec.chapter);showModal('<span class="eyebrow">선택형 엘리트 도전</span><h2 id="modal-title">보관함의 경비를 깨울까요?</h2><p>강화 드론을 쓰러뜨리면 보관함의 선택지가 최대 3종으로 늘고 시드 25를 얻습니다. 도전을 시작해도 본래 출구로 떠날 수 있습니다.</p><div class="modal-actions"><button id="trial-no">지나가기</button><button class="primary" id="trial-yes">도전 시작</button></div>','trial');$('trial-no').onclick=()=>game.chooseTrial(false);$('trial-yes').onclick=()=>game.chooseTrial(true);}
  if(e.type==='chapter'){stageMusic.setScene('chapter',game.spec.chapter);const next=game.spec.chapter+1;showModal(`<span class="eyebrow">CHAPTER ${game.spec.chapter} COMPLETE</span><h2 id="modal-title">${ROOM_SPECS[game.room+1].chapterName}으로</h2><p>최대 체력 +20 · 공격력 +6 · 체력 45 회복 · 수익 50으로 다음 장을 시작합니다.</p><div class="modal-actions"><button class="primary" id="enter-chapter2">${next}장 진입 →</button></div>`,'chapter');$('enter-chapter2').onclick=()=>game.enterNextChapter();}
@@ -46,7 +50,7 @@ function event(e){
  if(e.type==='finish'){archiveRun();stageMusic.setScene('title',game.spec.chapter);
   if(!savedRun){progress.knowledge+=e.knowledge;progress.runs++;progress.best=Math.max(progress.best,game.room+1);if(e.won)progress.wins++;savedRun=true;if(!saveProgress())showNotice('브라우저 저장이 차단되어 기록은 이 화면을 닫기 전까지만 유지됩니다.',12);}
   const won=e.won;
-  showModal(`<span class="eyebrow">${won?'LISTING APPROVED · 상장 승인':'LIQUIDATED · 이번 도전 종료'}</span><h2 id="modal-title">${won?'Mega Cap → Market Legend':'청산되었습니다'}</h2><p>${won?'시장의 심장을 돌파했습니다. 다섯 장의 도전을 완료했습니다.':'이번 손실도 다음 판단의 근거가 됩니다. 투자 지식은 다음 도전에 남습니다.'}</p><div class="stat-grid"><div><strong>${fmtTime(game.totalTime)}</strong><small>플레이 시간</small></div><div><strong>${game.kills}</strong><small>처치한 적</small></div><div><strong>+${e.knowledge}</strong><small>투자 지식</small></div></div><p>이번 도전 · 공격 ${game.log.export().summary.attacks}회 · 토템 발동 ${game.log.export().summary.totem_activations}회<br>보유 투자 지식 ${progress.knowledge} · 다음 시작 체력 ${100+Math.min(20,progress.knowledge*2)}<br>이번 포트폴리오: ${game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'없음'}</p><div class="modal-actions"><button class="secondary" id="back-title">처음으로</button><button class="primary" id="retry">다시 도전 ↗</button></div>`,'finish');$('retry').onclick=startGame;$('back-title').onclick=backToTitle;
+  showModal(`<span class="eyebrow">${won?'LISTING APPROVED · 상장 승인':'LIQUIDATED · 이번 도전 종료'}</span><h2 id="modal-title">${won?'Mega Cap → Market Legend':'청산되었습니다'}</h2><p>${won?'시장의 심장을 돌파했습니다. 다섯 장의 도전을 완료했습니다.':'이번 손실도 다음 판단의 근거가 됩니다. 투자 지식은 다음 도전에 남습니다.'}</p><div class="stat-grid"><div><strong>${fmtTime(game.totalTime)}</strong><small>플레이 시간</small></div><div><strong>${game.kills}</strong><small>처치한 적</small></div><div><strong>+${e.knowledge}</strong><small>투자 지식</small></div></div><p>이번 도전 · 공격 ${game.log.export().summary.attacks}회 · 토템 발동 ${game.log.export().summary.totem_activations}회<br>이번 도전 피자스코어 +${game.pizzaEarned} · 누적 ${pizzaWallet.balance}<br>보유 투자 지식 ${progress.knowledge} · 다음 시작 체력 ${100+Math.min(20,progress.knowledge*2)}<br>이번 포트폴리오: ${game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'없음'}</p><div class="modal-actions"><button class="secondary" id="back-title">처음으로</button><button class="primary" id="retry">다시 도전 ↗</button></div>`,'finish');$('retry').onclick=startGame;$('back-title').onclick=backToTitle;
  }
 }
 function closeTotems(){if(game.state!=='totems')return;game.state='playing';hideModal();stageMusic.setScene('playing',game.spec.chapter);}
@@ -194,7 +198,7 @@ function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fil
 }
 function tick(now){const dt=Math.min((now-last)/1000||0,1/30);last=now;game.update(dt,input);stageMusic.update(dt);render();if(game.state!=='title')updateHUD();requestAnimationFrame(tick);}
 async function init(){
- game=new Game({onEvent:event,knowledge:progress.knowledge});bind();updateSaveNote();equipmentUI.renderTitle();
+ game=new Game({onEvent:event,knowledge:progress.knowledge});bind();updateSaveNote();equipmentUI.renderTitle();updateWallet();
  try{const names=['hero','rubble','bomb','ghost','boss','alley','institution','shield','drone','enforcer'];const imgs=await Promise.all(names.map(n=>imageLoad(`./${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=['alley','institution'].includes(n)?imgs[i]:atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}const bank=await imageLoad('./central-bank-monsters.png');
  const cuts=[0,285,510,750,1020,1402],types=['shield','drone','bomb','ghost','central'];
  for(let row=0;row<types.length;row++){const strip=document.createElement('canvas');strip.width=bank.width;strip.height=cuts[row+1]-cuts[row];strip.getContext('2d').drawImage(bank,0,cuts[row],bank.width,strip.height,0,0,bank.width,strip.height);assets['bank-'+types[row]]=atlas(strip,4,1,false);}

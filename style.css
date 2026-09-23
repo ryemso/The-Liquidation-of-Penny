@@ -34,3 +34,5 @@
 [data-kind="totems"] .totem-slots button{font-size:13px;min-height:36px;padding:5px}
 @media(max-width:750px){.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]){padding:16px}.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) h2{font-size:21px}}
 @media(max-width:600px){.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]){width:100%;padding:12px;max-height:95%}.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) h2{font-size:17px}}
+
+.pizza-wallet{display:flex;align-items:center;gap:9px;padding:7px 2px;color:var(--gold);font-size:13px;flex-wrap:wrap}.pizza-wallet img{image-rendering:pixelated;object-fit:contain}.pizza-wallet small{color:var(--muted);font-size:11px}#wallet-status{color:#ff9b8a}
