@@ -40,6 +40,51 @@
       "id": "pizza-score",
       "name": "피자스코어",
       "prompt": "Create ONE inventory sprite for the pixel-art finance action game The Liquidation of Penny. Genuine coarse 32x32-style pixel art enlarged with crisp square pixels, very limited palette, dark one-pixel outline, no antialiasing, no gradients, no text or letters, no UI frame, no floor, no extra objects. Single centered readable silhouette occupying 70% of a square image, transparent background. Matching restrained navy shadows, warm ivory highlights, tiny gold accents. This is a usable equipment icon, not a detailed illustration. A single triangular golden pizza slice with three large red pepperoni pixels/clusters, cream cheese and thick toasted crust, small dark teal ribbon tab with a gold star at the crust. Currency icon, appetizing and exceptionally legible at 24 pixels, no coin behind it."
+    },
+    {
+      "id": "opening-dagger",
+      "name": "개장 단검",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: A short simple steel dagger diagonal tip upper right, worn brown leather handle, small brass opening-bell shaped pommel. Grey steel brown muted brass. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. common tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
+    },
+    {
+      "id": "apprentice-broker-vest",
+      "name": "수습 중개인의 조끼",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: A modest charcoal brown sleeveless broker waistcoat, ivory shirt inset, two brass buttons and one tiny folded paper in breast pocket. No person. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. common tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
+    },
+    {
+      "id": "worn-quote-watch",
+      "name": "낡은 호가 시계",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: A worn round steel wristwatch with brown leather strap, cracked ivory dial with a few red green rectangular quote ticks instead of numbers. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. common tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
+    },
+    {
+      "id": "breakout-longsword",
+      "name": "돌파의 장검",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: A long bright steel sword pointing diagonally upper right, blue grip and cyan angular arrowhead blade tip suggesting a breakout above resistance, small blue crossguard. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. rare tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
+    },
+    {
+      "id": "downside-defense-coat",
+      "name": "하방 방어 코트",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: A sturdy navy blue long broker coat, cyan reinforced shoulder and hem plates, broad protective collar and silver clasps. No person. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. rare tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
+    },
+    {
+      "id": "dividend-notebook",
+      "name": "배당 수첩",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: A compact cobalt blue leather pocket notebook slightly open, silver corners, cyan bookmark, three gold dividend coins tucked along lower edge, small embossed coin emblem. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. rare tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
+    },
+    {
+      "id": "short-squeeze-cleaver",
+      "name": "숏 스퀴즈 절단검",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: A heavy oversized angular cleaver diagonal upper right, dark plum steel body vivid violet edge, gold clamp-like guard and two compressed gold coil segments at blade base. Bold single weapon silhouette. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. unique tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
+    },
+    {
+      "id": "margin-call-armor",
+      "name": "마진콜 방호복",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: A compact sealed dark purple protective armored torso suit with high collar, gold reinforced shoulder pads, violet chest shield and small amber warning diamond. No person, no head. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. unique tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
+    },
+    {
+      "id": "compound-pocket-watch",
+      "name": "복리의 회중시계",
+      "prompt": "Use case: stylized-concept. Asset type: inventory equipment icon for The Liquidation of Penny, tiny pixel action roguelite. Subject: An ornate round gold pocket watch with short loop of gold chain, deep violet dial, nested expanding gold rings indicating compounding, ivory hands and violet crystal crown. Style: deliberate coarse pixel art with square pixel clusters, dark 1-pixel-like outline, limited 12-color palette, 3-step shading, no smooth gradients or anti-aliasing. One centered isolated item occupying 75% of square canvas, fully visible with generous transparent padding, genuinely transparent background. Readable when shown at 48 pixels. unique tier. No text, letters, numbers, watermark, border, card, scene or ground shadow. Output exactly one icon."
     }
   ]
 }

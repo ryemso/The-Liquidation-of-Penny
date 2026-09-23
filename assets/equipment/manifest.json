@@ -54,5 +54,68 @@
     "rarity": "currency",
     "src": "./pizza-score.png",
     "displaySize": 24
+  },
+  {
+    "id": "opening-dagger",
+    "name": "개장 단검",
+    "rarity": "common",
+    "displaySize": 48,
+    "src": "./opening-dagger.png"
+  },
+  {
+    "id": "apprentice-broker-vest",
+    "name": "수습 중개인의 조끼",
+    "rarity": "common",
+    "displaySize": 48,
+    "src": "./apprentice-broker-vest.png"
+  },
+  {
+    "id": "worn-quote-watch",
+    "name": "낡은 호가 시계",
+    "rarity": "common",
+    "displaySize": 48,
+    "src": "./worn-quote-watch.png"
+  },
+  {
+    "id": "breakout-longsword",
+    "name": "돌파의 장검",
+    "rarity": "rare",
+    "displaySize": 48,
+    "src": "./breakout-longsword.png"
+  },
+  {
+    "id": "downside-defense-coat",
+    "name": "하방 방어 코트",
+    "rarity": "rare",
+    "displaySize": 48,
+    "src": "./downside-defense-coat.png"
+  },
+  {
+    "id": "dividend-notebook",
+    "name": "배당 수첩",
+    "rarity": "rare",
+    "displaySize": 48,
+    "src": "./dividend-notebook.png"
+  },
+  {
+    "id": "short-squeeze-cleaver",
+    "name": "숏 스퀴즈 절단검",
+    "rarity": "unique",
+    "displaySize": 48,
+    "src": "./short-squeeze-cleaver.png"
+  },
+  {
+    "id": "margin-call-armor",
+    "name": "마진콜 방호복",
+    "rarity": "unique",
+    "displaySize": 48,
+    "src": "./margin-call-armor.png"
+  },
+  {
+    "id": "compound-pocket-watch",
+    "name": "복리의 회중시계",
+    "rarity": "unique",
+    "displaySize": 48,
+    "src": "./compound-pocket-watch.png"
   }
 ]
