@@ -1,7 +1,7 @@
 // Code-native pixel scenery: palette follows each chapter's background treatment.
-const palettes=[['#242630','#46434a','#817267','#bc9270'],['#192934','#334856','#6c858d','#b8b39a'],['#172737','#293e50','#557782','#65b9c1'],['#292a2c','#47473c','#827861','#c2a36e'],['#2b202d','#493143','#776174','#c78291']];
+const palettes=[['#242630','#46434a','#817267','#bc9270'],['#192934','#334856','#6c858d','#b8b39a'],['#172737','#293e50','#557782','#65b9c1'],['#292a2c','#47473c','#827861','#c2a36e'],['#2b202d','#493143','#776174','#c78291'],['#20292a','#3b4845','#879081','#c0ad75']];
 export function drawTerrain(ctx,terrain,chapter,time){
- const [dark,mid,edge,accent]=palettes[Math.min(4,Math.max(0,chapter-1))];
+ const [dark,mid,edge,accent]=palettes[Math.min(5,Math.max(0,chapter-1))];
  const box=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h);};
  ctx.save();
  for(const p of terrain.walls){

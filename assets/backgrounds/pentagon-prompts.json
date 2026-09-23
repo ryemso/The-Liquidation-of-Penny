@@ -1,0 +1,21 @@
+{
+  "generator": "builtin imagegen",
+  "designs": [
+    {
+      "id": "pentagon-exterior",
+      "prompt": "Use case: stylized-concept. Create one opaque landscape 16:9 pixel-art background for a 2D side scrolling action platformer. Pentagon exterior at dusk, broad low limestone military headquarters facade, angular architectural wings, flagpoles, distant entry pavilion, lawn and dark pavement, muted olive stone and amber window lights. Handcrafted coarse pixel art, visible square pixels, dark crisp outlines, limited colors matching dark atmospheric indie pixel action game. Flat SIDE-ON composition. All architecture and furniture behind gameplay. Bottom 25 percent low-detail open dark floor for tiny combat sprites. No people, enemies, UI, readable text, watermark, panels, floating platforms or foreground obstacles. Not a real interior layout or blueprint; fictional game environment."
+    },
+    {
+      "id": "pentagon-lobby",
+      "prompt": "Use case: stylized-concept. Create one opaque landscape 16:9 pixel-art background for a 2D side scrolling action platformer. Fictional Pentagon first-floor interior, broad side-on limestone lobby, security desks and closed gates in background, institutional corridors, bronze trim, teal overhead lighting, polished stone. Handcrafted coarse pixel art, visible square pixels, dark crisp outlines, limited colors matching dark atmospheric indie pixel action game. Flat SIDE-ON composition. All architecture and furniture behind gameplay. Bottom 25 percent low-detail open dark floor for tiny combat sprites. No people, enemies, UI, readable text, watermark, panels, floating platforms or foreground obstacles. Not a real interior layout or blueprint; fictional game environment."
+    },
+    {
+      "id": "pentagon-corridor",
+      "prompt": "Use case: stylized-concept. Create one opaque landscape 16:9 pixel-art background for a 2D side scrolling action platformer. Fictional Pentagon corridor leading toward a central conference chamber, side-on succession of reinforced double doors and wall map displays, dark olive walls, exposed cable ducts, low red indicator lights and cool overhead strips. Corridor runs horizontally across image. Handcrafted coarse pixel art, visible square pixels, dark crisp outlines, limited colors matching dark atmospheric indie pixel action game. Flat SIDE-ON composition. All architecture and furniture behind gameplay. Bottom 25 percent low-detail open dark floor for tiny combat sprites. No people, enemies, UI, readable text, watermark, panels, floating platforms or foreground obstacles. Not a real interior layout or blueprint; fictional game environment."
+    },
+    {
+      "id": "pentagon-chamber",
+      "prompt": "Use case: stylized-concept. Create one opaque landscape 16:9 pixel-art background for a 2D side scrolling action platformer. Fictional Pentagon central conference room as climactic financial-action game arena, grand dark meeting chamber with long conference table and empty chairs entirely in background, huge abstract economic world map panels with unreadable chart marks, bronze eagle-like geometric emblem, dramatic muted gold and deep navy lighting. Handcrafted coarse pixel art, visible square pixels, dark crisp outlines, limited colors matching dark atmospheric indie pixel action game. Flat SIDE-ON composition. All architecture and furniture behind gameplay. Bottom 25 percent low-detail open dark floor for tiny combat sprites. No people, enemies, UI, readable text, watermark, panels, floating platforms or foreground obstacles. Not a real interior layout or blueprint; fictional game environment."
+    }
+  ]
+}
