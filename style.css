@@ -17,3 +17,20 @@
 
 /* Starting loadout */
 .screen{overflow-y:auto;align-items:flex-start}.start-card{margin-block:auto;padding-block:12px}.starting-equipment{margin:12px 0}.starting-equipment>strong{font-size:12px}.starting-equipment>small{font-size:10px;color:var(--muted)}#equipment-slots{display:flex;gap:6px;margin:6px 0}#equipment-slots button{width:64px;padding:4px;background:#101a29;border:1px solid #69778a;display:flex;flex-direction:column;align-items:center}#equipment-slots small{font-size:9px}.starting-equipment img,.equipment-item img{image-rendering:pixelated;object-fit:contain;flex-shrink:0}.empty-slot{display:grid;place-items:center;width:48px;height:48px;color:#7e8b9c}.equipment-tabs{display:flex;gap:6px;flex-wrap:wrap}.equipment-tabs button{background:#182438;border:1px solid #657182;padding:8px}.equipment-tabs [aria-pressed=true],.equipment-item[aria-pressed=true]{border-color:var(--gold);background:#343025}.equipment-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.equipment-item{display:flex;align-items:center;gap:10px;text-align:left;background:#101a29;border:1px solid #425267;padding:10px}.equipment-item span{display:flex;flex-direction:column;gap:5px}.equipment-item small{font-size:11px;color:#b9c6d3}.equipment-item strong{font-size:13px}.equipment-item:disabled{cursor:default}.starting-equipment+button{margin-top:4px}@media(max-width:700px){.equipment-list{grid-template-columns:1fr}.start-quote{display:none}#equipment-slots button{width:48px}#equipment-slots img,.empty-slot{width:32px;height:32px}.starting-equipment{margin:6px 0}}
+
+/* Compact totem inventory and reward selection. */
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]){width:min(800px,94%);padding:24px;max-height:90%}
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) h2{font-size:25px;margin:6px 0 10px}
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"])>.totem-collection{gap:10px;margin-bottom:14px;max-height:44vh}
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) .totem-card{padding:11px}
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) .totem-card svg{display:block;width:80%;height:60px;margin:6px auto 0}
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) .totem-card h3{font-size:15px;margin:6px 0}
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) .totem-card p{font-size:13px;line-height:1.5;margin:8px 0}
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) .totem-card small,
+.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) .totem-card>span{font-size:12px}
+[data-kind="totems"] .totem-slots{gap:8px;margin:12px 0}
+[data-kind="totems"] .totem-slots>div{padding:9px;gap:6px}
+[data-kind="totems"] .totem-slots strong,[data-kind="totems"] .swap-detail{font-size:13px}
+[data-kind="totems"] .totem-slots button{font-size:13px;min-height:36px;padding:5px}
+@media(max-width:750px){.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]){padding:16px}.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) h2{font-size:21px}}
+@media(max-width:600px){.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]){width:100%;padding:12px;max-height:95%}.modal-inner:is([data-kind="totems"],[data-kind="relic_choice"]) h2{font-size:17px}}
