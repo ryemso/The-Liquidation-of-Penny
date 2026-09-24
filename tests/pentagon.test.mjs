@@ -25,7 +25,7 @@ test('Pentagon fights require clearance, grant one reward and lobby recovery, th
  const g=make();g.setRoom(25);g.player.hp=40;
  for(let room=25;room<29;room++){
   assert.equal(g.room,room);g.player.inv=999;const hp=g.player.hp;
-  g.enemies.forEach(e=>g.hitEnemy(e,99999));settle(g);
+  if(room===28)for(let i=0;i<361;i++)g.update(1/120);g.enemies.forEach(e=>g.hitEnemy(e,99999));settle(g);
   if(room<28){assert.equal(g.state,'reward');assert.ok(g.currentOffers.length);if(room===26)assert.equal(g.player.hp,hp+20);g.chooseReward('growth');if(g.state==='reward')g.chooseReward(g.currentOffers[0]);}
   const amount=g.pizzaEarned;g.awardClearCurrency();assert.equal(g.pizzaEarned,amount);exit(g);
  }

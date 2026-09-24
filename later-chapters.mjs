@@ -3,7 +3,7 @@ const profiles={
  2:{upper:'기관 주문 데크',lower:'로비 우회로',heights:[515,410,305,210,305,210,320,420],types:['shield','drone','shield','ghost'],hint:'방패 뒤로 이동 · 조준선이 고정되면 회피'},
  3:{upper:'알고리즘 전송 회랑',lower:'캐시 우회로',heights:[515,405,295,185,75,185,295,405],types:['drone','ghost','drone','bomb'],hint:'조준을 유도한 뒤 대시 · 높은 발판으로 이동'},
  4:{upper:'지급준비 상층 금고',lower:'국채 하부 통로',heights:[515,415,315,215,115,215,315,415],types:['shield','shield','drone','ghost'],hint:'단단한 방패는 뒤에서 · 익절로 관통'},
- 6:{upper:'조달 통제 상층',lower:'국가계약 검문로',heights:[515,410,305,200,305,200,310,415],types:['shield','rubble','drone','shield'],hint:'경비를 제압해 출구 개방 · 상층 보관함은 선택'},
+ 6:{upper:'조달 통제 상층',lower:'국가계약 검문로',heights:[515,410,305,200,305,200,310,415],types:['rifle','pugilist','rifle','pugilist'],hint:'경비를 제압해 출구 개방 · 상층 보관함은 선택'},
  5:{upper:'버블 상층 균열',lower:'가격발견 우회로',heights:[515,405,300,190,300,190,300,405],types:['bomb','ghost','drone','shield'],hint:'폭탄의 준비 동작을 보고 이탈 · 공중 재진입'}
 };
 const ledge=(x,y,w=190)=>({x:Math.round(x),y,w,h:18});
@@ -26,7 +26,7 @@ export function buildLaterChapters(g){
  {id:'route-spikes',type:'spikes',x:ledges[3].x+120,y:ledges[3].y-14,w:48,h:14}];
  g.terrain={walls,ledges,traps,extra:[]};g.platforms=[floor,...walls,...ledges];
  const rows=[];
- for(let i=0;i<4;i++)rows.push([g.spec.chapter===5&&i===2?'bomb':'shield',540+i*(g.width-900)/3,620,false,'lower']);
+ for(let i=0;i<4;i++)rows.push([g.spec.chapter===6?(i%2?'pugilist':'rifle'):g.spec.chapter===5&&i===2?'bomb':'shield',540+i*(g.width-900)/3,620,false,'lower']);
  for(let i=0;i<8;i++){const p=ledges[i],type=profile.types[i%4],flying=['ghost','drone'].includes(type);rows.push([type,p.x+8,p.y-(flying?45:0),kind==='elite'&&i===5,'upper']);}
  g.enemies=rows.map(([type,x,bottom,elite,band])=>{const e=g.makeEnemy(type,x,bottom,elite);e.anchorY=e.y;e.encounterRange=kind==='elite'?400:320;e.routeBand=kind==='elite'?null:band;return e;});
  const base=ledge(g.width-560,414,150),step=ledge(base.x-65,318,140),top=ledge(base.x+65,226,140);

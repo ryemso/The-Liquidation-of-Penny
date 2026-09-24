@@ -1,0 +1,26 @@
+{
+  "generator": "builtin imagegen",
+  "prompt": "Recreate this pixel-art military monster atlas for the game, preserve character designs. Exactly 4 columns, 5 rows on transparent alpha background; equal grid cells, generous padding no overlap. Each row same actor in idle, windup, attack, recover, side facing right. Row1 gas-mask military rifle monster. Row2 muscular bandaged-fist pugilist. Row3 huge armored-fist elite brute. Row4 ordinary human male in dark business suit. Row5 transformed gigantic muscular armored monster with torn suit and gold coin core. Chunky pixel art dark outlines olive navy brass. No text, no grid lines, no background. All poses fully inside their own cells.",
+  "rows": [
+    "rifle",
+    "pugilist",
+    "brute",
+    "official",
+    "executor"
+  ],
+  "rowCuts": [
+    0,
+    250,
+    476,
+    707,
+    922,
+    1254
+  ],
+  "columnCuts": [
+    0,
+    320,
+    640,
+    1000,
+    1254
+  ]
+}
