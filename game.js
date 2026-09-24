@@ -1,3 +1,4 @@
+import {createImageLoader} from './asset-loader.mjs';
 import {skillCost,POLICY_RULES} from './pentagon-combat.mjs';
 import {BACKGROUND_ASSETS,locationFor,drawLocation} from './backgrounds.mjs';
 import {drawCombatFeel} from './combat-feel.mjs';
@@ -10,6 +11,9 @@ import {inventory,hud as totemHUD,drawRelic,chooseRelic} from './totem-ui.mjs';
 import {Game,MARKETS,CARDS,ROOM_SPECS,clamp} from './engine.mjs';
 import {StageMusic} from './audio.mjs';
 const $=id=>document.getElementById(id);
+const chapterRoomCounts=new Map();
+for(const room of ROOM_SPECS)chapterRoomCounts.set(room.chapter,(chapterRoomCounts.get(room.chapter)||0)+1);
+let lastHUD=-Infinity,lastHUDGame=null,lastHUDState='',lastHUDRoom=-1;
 const canvas=$('game'),ctx=canvas.getContext('2d',{alpha:false});
 const input={left:false,right:false,attack:false,down:false,up:false};
 const assets={};let game,loaded=false,last=0,noticeUntil=0,roomUntil=0,modalCards=[],modalKind='',lastFocus=null,savedRun=false;
@@ -105,7 +109,7 @@ function bind(){
  window.addEventListener('blur',()=>{clearInput();stageMusic.setScene('title',game?.spec?.chapter||1);if(game.state==='playing')pauseGame();});document.addEventListener('visibilitychange',()=>{stageMusic.setScene(document.hidden?'title':(game?.state==='playing'?'playing':'title'),game?.spec?.chapter||1);if(document.hidden){clearInput();if(game.state==='playing')pauseGame();}});
  canvas.addEventListener('pointerdown',()=>canvas.focus({preventScroll:true}));
 }
-async function imageLoad(path){return new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(new Error(path));i.src=path;});}
+const imageLoad=createImageLoader();
 // Runtime sprite masking: source PNGs stay intact. The rendering surface handles
 // alpha, keyed magenta, or the neutral checkerboard baked into early concept art.
 function atlas(image,cols,rows,magenta=false,customCuts=null){
@@ -183,7 +187,7 @@ function render(){
  if(game.freeze>0){rect(0,0,1280,720,'#5284a91c');ctx.strokeStyle='#84c9ed88';ctx.lineWidth=5;ctx.strokeRect(3,3,1274,714);label('TRADING HALT',640,510,'#bdeaff',16);}
  const vignette=ctx.createRadialGradient(640,380,270,640,350,750);vignette.addColorStop(0,'#01050b00');vignette.addColorStop(1,'#01050b75');ctx.fillStyle=vignette;ctx.fillRect(0,0,1280,720);
 }
-function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('hp-text').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;$('profit-fill').style.width=`${p.profit}%`;$('profit-text').textContent=`${Math.floor(p.profit)}%`;$('gold').textContent=String(p.gold);$('room-number').textContent=`${String(game.spec.localRoom).padStart(2,'0')} / 05`;$('rank').textContent=game.state==='victory'?'SMALL CAP':'PENNY STOCK';const m=MARKETS[game.market];$('market-name').textContent=m.name;$('market-name').style.color=m.color;$('market-detail').textContent=m.detail;$('market-warning').textContent=game.marketClock>game.marketPeriod-4?`${Math.ceil(game.marketPeriod-game.marketClock)}초 후 ${MARKETS[(game.market+1)%3].name}`:'';
+function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('hp-text').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;$('profit-fill').style.width=`${p.profit}%`;$('profit-text').textContent=`${Math.floor(p.profit)}%`;$('gold').textContent=String(p.gold);$('room-number').textContent=`${String(game.spec.localRoom).padStart(2,'0')} / ${String(chapterRoomCounts.get(game.spec.chapter)).padStart(2,'0')}`;const m=MARKETS[game.market];$('market-name').textContent=m.name;$('market-name').style.color=m.color;$('market-detail').textContent=m.detail;$('market-warning').textContent=game.marketClock>game.marketPeriod-4?`${Math.ceil(game.marketPeriod-game.marketClock)}초 후 ${MARKETS[(game.market+1)%3].name}`:'';
  const alive=game.enemies.filter(e=>!e.dead).length;$('enemy-count').textContent=game.spec.kind==='shop'?'안전 구역':game.exploration?'탐험 · 출구 도달 후 ↑로 보상':alive?`남은 적 ${alive}`:'구역 정리 완료';
  const boss=game.enemies.find(e=>e.boss);if(boss){$('boss-fill').style.width=`${Math.max(0,boss.hp)/boss.maxHp*100}%`;$('boss-phase').textContent=boss.type==='executor'?(boss.transformed?(game.skillPolicy?POLICY_RULES[game.skillPolicy.kind].name+' · '+Math.ceil(game.skillPolicy.remaining)+'초':'변신 · 근접전'):'변신까지 '+Math.max(0,3-boss.introTime).toFixed(1)+'초'):(boss.hp<boss.maxHp*.5?'PHASE 02':'PHASE 01');}
  const skillList=[['profit',p.profitCD,`수익 ${skillCost(game,'profit')} 이상`],['leverage',p.leverageCD,'8초 / 피해 ×1.65'],['circuit',p.circuitCD,`적 ${2+game.stats.circuitExtra}초 정지`]];
@@ -192,10 +196,10 @@ function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fil
  if(performance.now()>noticeUntil)$('notice').classList.add('hidden');if(performance.now()>roomUntil)$('room-toast').classList.add('hidden');$('rank').textContent=game.rank;
  $('start-chapter2').classList.toggle('hidden',progress.best<5);
 }
-function tick(now){const dt=Math.min((now-last)/1000||0,1/30);last=now;game.update(dt,input);stageMusic.update(dt);render();if(game.state!=='title')updateHUD();requestAnimationFrame(tick);}
+function tick(now){const dt=Math.min((now-last)/1000||0,1/30);last=now;game.update(dt,input);stageMusic.update(dt);render();if(game.state!=='title'&&(now-lastHUD>=50||lastHUDGame!==game||lastHUDState!==game.state||lastHUDRoom!==game.room)){updateHUD();lastHUD=now;lastHUDGame=game;lastHUDState=game.state;lastHUDRoom=game.room;}requestAnimationFrame(tick);}
 async function init(){
  game=new Game({onEvent:event,knowledge:progress.knowledge});bind();updateSaveNote();equipmentUI.renderTitle();updateWallet();
- try{const names=['hero','rubble','bomb','ghost','boss','shield','drone','enforcer'];const imgs=await Promise.all(names.map(n=>imageLoad(`./${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}for(const [prefix,file,boss,cuts] of [
+ try{const names=['hero','rubble','bomb','ghost','boss','shield','drone','enforcer'];const backgroundLoads=Promise.allSettled(BACKGROUND_ASSETS.map(async id=>{assets[id]=await imageLoad('./assets/backgrounds/'+id+'.png');}));const imgs=await Promise.all(names.map(n=>imageLoad(`./${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}for(const [prefix,file,boss,cuts] of [
  ['inst','institution-v2','enforcer',[0,191,392,584,774,939,1254]],
  ['algo','algorithm-v2','algorithm',[0,195,376,549,755,910,1254]],
  ['bank','central-v2','central',[0,194,389,586,809,983,1254]],
@@ -203,7 +207,7 @@ async function init(){
  ]){const sheet=await imageLoad('./assets/monsters/'+file+'.png'),types=['shield','drone','bomb','ghost','rubble',boss];for(let row=0;row<types.length;row++){const strip=document.createElement('canvas'),top=Math.round(cuts[row]/1254*sheet.height);strip.width=sheet.width;strip.height=Math.round(cuts[row+1]/1254*sheet.height)-top;strip.getContext('2d').drawImage(sheet,0,top,sheet.width,strip.height,0,0,sheet.width,strip.height);assets[prefix+'-'+types[row]]=atlas(strip,4,1,false);}}
 
  const militarySheet=await imageLoad('./assets/monsters/pentagon-v1.png');const militaryRows=[0,250,476,707,922,1254];for(const [row,name] of ['rifle','pugilist','brute','official','executor'].entries()){const strip=document.createElement('canvas');strip.width=militarySheet.width;strip.height=militaryRows[row+1]-militaryRows[row];strip.getContext('2d').drawImage(militarySheet,0,militaryRows[row],militarySheet.width,strip.height,0,0,strip.width,strip.height);assets['pent-'+name]=atlas(strip,4,1,false,[0,320,640,1000,1254]);}
- await Promise.all(BACKGROUND_ASSETS.map(async id=>{assets[id]=await imageLoad('./assets/backgrounds/'+id+'.png');}));
+ const backgroundResults=await backgroundLoads;const failedBackground=backgroundResults.find(r=>r.status==='rejected');if(failedBackground)throw failedBackground.reason;
  loaded=true;$('start').disabled=false;$('start').textContent='시장에 진입하기 ↗';requestAnimationFrame(tick);}
  catch(err){$('start').textContent='에셋 다시 불러오기';$('start').disabled=false;$('start').onclick=()=>location.reload();$('save-note').textContent='이미지를 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';console.error('Asset load failed:',err);}
 }

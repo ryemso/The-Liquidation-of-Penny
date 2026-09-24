@@ -9,7 +9,8 @@ export function inventory(game,showModal,close,acquired){let selected=null;const
  document.getElementById('totem-close').onclick=close;
  document.getElementById('totem-log').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(game.log.export(),null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='penny-run-events.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
  };draw();}
-export function hud(game,el){el.classList.toggle('hidden',['title','dead','victory'].includes(game.state));const html=game.totems.slots.map((id,i)=>{const t=TOTEMS.find(t=>t.id===id);if(!t)return `<span class="totem-mini">${i+1} · 빈 슬롯</span>`;const s=game.totems.states[id];return `<span class="totem-mini" title="${t.desc}">${chart(t,s.cd>0?0:s.n/t.steps)}<b>${t.name}</b><small>${s.cd>0?'대기 '+Math.ceil(s.cd)+'초':s.n+'/'+t.steps}${s.n?' · '+Math.ceil(s.time)+'초':''}${s.ready?' · 돌파 준비':''}<br>${nextAction(t,s)}</small></span>`;}).join('');if(el.innerHTML!==html)el.innerHTML=html;}
+const hudMarkup=new WeakMap();
+export function hud(game,el){el.classList.toggle('hidden',['title','dead','victory'].includes(game.state));const html=game.totems.slots.map((id,i)=>{const t=TOTEMS.find(t=>t.id===id);if(!t)return `<span class="totem-mini">${i+1} · 빈 슬롯</span>`;const s=game.totems.states[id];return `<span class="totem-mini" title="${t.desc}">${chart(t,s.cd>0?0:s.n/t.steps)}<b>${t.name}</b><small>${s.cd>0?'대기 '+Math.ceil(s.cd)+'초':s.n+'/'+t.steps}${s.n?' · '+Math.ceil(s.time)+'초':''}${s.ready?' · 돌파 준비':''}<br>${nextAction(t,s)}</small></span>`;}).join('');if(hudMarkup.get(el)!==html){el.innerHTML=html;hudMarkup.set(el,html);}}
 // Small, code-native pixel pickup icon: 24 x 18 world pixels.
 export function drawRelic(game,ctx){
  const r=game.relic;if(!r||r.taken)return;if(r.hidden&&!r.revealed){if(Math.abs(game.player.x-r.x)<250){ctx.fillStyle='#a5bdc3';ctx.fillRect(r.x,r.y+12,3,3);}return;}
