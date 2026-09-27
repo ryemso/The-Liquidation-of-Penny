@@ -1,9 +1,9 @@
+import {updateMeleeBoss} from './melee-boss.mjs';
 import {skillCost,paySkill,clearPolicy,updatePentagon,updatePentagonEnemy} from './pentagon-combat.mjs';
 import {PENTAGON_ROOMS} from './pentagon.mjs';
 import {addImpact,releaseCircuit} from './combat-feel.mjs';
 import {clearReward} from './currency.mjs';
 import {EquipmentEffects} from './equipment-effects.mjs';
-import {updateSpecialPattern} from './boss-patterns.mjs';
 import {applyStartingEquipment} from './equipment.mjs';
 import {buildLaterChapters} from './later-chapters.mjs';
 import {buildChapterOne} from './chapter-one.mjs';
@@ -287,19 +287,14 @@ export class Game{
   }
  }
  updateEnemy(e,dt){
-  if(e.stagger>0){e.stagger=Math.max(0,e.stagger-dt);e.vx=0;return;}
-  if(e.routeBand&&((e.routeBand==='upper'&&this.player.y>500)||(e.routeBand==='lower'&&this.player.y+this.player.h<460)||Math.abs(this.player.y-e.y)>230)){e.vx=0;return;}
+  if(e.stagger>0){e.stagger=Math.max(0,e.stagger-dt);e.vx=0;if(!e.flying)moveBody(e,dt,this.platforms,this.width);return;}
+  if(e.routeBand&&((e.routeBand==='upper'&&this.player.y>500)||(e.routeBand==='lower'&&this.player.y+this.player.h<460)||Math.abs(this.player.y-e.y)>230)){e.vx=0;if(!e.flying)moveBody(e,dt,this.platforms,this.width);return;}
 
-  if(e.grounded&&this.terrain.walls.some(w=>Math.abs((e.x+e.w/2)-(w.x+w.w/2))<e.w+85)){e.vy=-580;e.grounded=false;}
+  if(!e.boss&&!e.flying&&e.state==='idle'&&e.grounded&&this.terrain.walls.some(w=>Math.abs((e.x+e.w/2)-(w.x+w.w/2))<e.w+85)){e.vy=-580;e.grounded=false;}
   const p=this.player;e.anim+=dt;e.timer-=dt;const dx=p.x+p.w/2-(e.x+e.w/2),dy=(p.y+p.h/2)-(e.y+e.h/2),dist=Math.abs(dx);
-  if(!e.activated){if(dist<(e.encounterRange??610)){e.activated=true;this.log.add('enemy_encounter',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});}else return;}
+  if(!e.activated){if(dist<(e.encounterRange??610)){e.activated=true;this.log.add('enemy_encounter',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});}else{if(!e.flying){e.vx=0;moveBody(e,dt,this.platforms,this.width);}return;}}
   if(updatePentagonEnemy(this,e,dt,moveBody))return;
-  if(updateSpecialPattern(this,e))return;
-  if(e.type==='market'){this.updateMarket(e,dt,dx);return;}
-  if(e.type==='central'){this.updateCentral(e,dt,dx);return;}
-  if(e.type==='algorithm'){this.updateAlgorithm(e,dt,dx);return;}
-  if(e.type==='boss'){this.updateBoss(e,dt,dx);return;}
-  if(e.type==='enforcer'){this.updateEnforcer(e,dt,dx);return;}
+  if(updateMeleeBoss(this,e,dt,moveBody))return;
   if(e.type==='shield'){this.updateShield(e,dt,dx,dy);return;}
   if(e.type==='drone'){this.updateDrone(e,dt,dx);return;}
   if(e.type==='ghost'){
@@ -333,72 +328,7 @@ export class Game{
   else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=1.6;}
   if(overlap(e,p))this.hurt(8,e.x,'contact',e);
  }
- fireEnforcer(e,phase){const x=e.x+e.w/2,y=e.y+44,angle=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-2;i<=2;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(angle+i*.15)*(phase===2?290:255),vy:Math.sin(angle+i*.15)*(phase===2?290:255),r:8,damage:16,life:5,color:'#84dae2'});this.emit('sound',{name:'roar'});}
- updateEnforcer(e,dt,dx){
-  const p=this.player,phase=e.hp<e.maxHp*.5?2:1;e.vx=0;
-  if(e.state==='idle'){
-   e.facing=dx<0?-1:1;if(Math.abs(dx)>260)e.vx=e.facing*e.speed;
-   if(e.timer<=0){e.attackNo++;e.pattern=e.attackNo%3;e.state='windup';e.timer=1.25;e.lockDirection=e.facing;e.aimX=p.x+15;e.aimY=p.y+28;
-    if(e.pattern===0)
-    if(e.pattern===1)
-    if(e.pattern===2){const gap=clamp(p.x+(p.x<this.width/2?170:-170),180,this.width-180);e.safeGap=gap;for(let x=60;x<this.width-60;x+=105)if(Math.abs(x+43-gap)>120)this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:84,delay:1.5,life:.42,damage:22,hit:false});}
-   }
-  }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.62:.95;e.secondVolley=phase===2&&e.pattern===1;if(e.pattern===1)this.fireEnforcer(e,phase);}
-  else if(e.state==='attack'){
-   if(e.pattern===0){e.vx=e.lockDirection*(phase===2?500:425);if(overlap({...e,x:e.x-12,w:e.w+24},p))this.hurt(e.damage,e.x,'attack',e);}
-   if(e.secondVolley&&e.timer<.48){e.secondVolley=false;this.fireEnforcer(e,phase);}
-   if(e.timer<=0){e.state='recover';e.timer=phase===2?1.05:1.5;this.floatText(e.x+e.w/2,e.y-18,'방패 개방','#e5d49c',13);}
-  }else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.85:1.15;}
-  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,p)&&e.state==='idle')this.hurt(12,e.x,'contact',e);
- }
  explode(e){if(e.dead)return;this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional,cause:'self_destruct'});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;this.player.gold+=Math.round(e.gold*(this.market===2?1.35:1));const x=e.x+e.w/2,y=e.y+e.h/2;this.effects.push({type:'explosion',x,y,life:.5,max:.5});this.burst(x,y,'#efb86f',25);this.shake=8;this.emit('sound',{name:'explosion'});if(Math.hypot(this.player.x+15-x,this.player.y+28-y)<135)this.hurt(e.damage,x,'explosion',e);for(const other of this.enemies)if(other!==e&&!other.dead&&Math.hypot(other.x+other.w/2-x,other.y+other.h/2-y)<140)this.hitEnemy(other,60,Math.sign(other.x-x),false,true);}
- updateBoss(e,dt,dx){
-  const phase=e.hp<e.maxHp*.5?2:1;e.facing=dx<0?-1:1;e.vx=0;
-  if(e.state==='idle'){if(Math.abs(dx)>230)e.vx=e.facing*e.speed;if(e.timer<=0){e.attackNo++;e.pattern=e.attackNo%3;e.state='windup';e.timer=phase===2?.9:1.15;e.lockDirection=e.facing;
-   if(e.pattern===0){}
-   if(e.pattern===1){}
-   if(e.pattern===2){const px=this.player.x;for(const offset of [-165,0,165])this.hazards.push({source:{id:e.id,type:e.type},x:clamp(px+offset,80,this.width-100),y:620,w:72,delay:e.timer+.25,life:.45,damage:19,hit:false});}
-  }}else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=e.pattern===0?.65:.5;if(e.pattern===1){const bx=e.x+e.w/2,by=e.y+55;const angle=Math.atan2(this.player.y+28-by,this.player.x+15-bx);for(let i=-2;i<=2;i++)this.projectiles.push({source:{id:e.id,type:e.type},x:bx,y:by,vx:Math.cos(angle+i*.2)*(phase===2?265:230),vy:Math.sin(angle+i*.2)*(phase===2?265:230),r:9,damage:15,life:5,color:'#f1b174'});this.emit('sound',{name:'roar'});}}
-  else if(e.state==='attack'){if(e.pattern===0){e.vx=e.lockDirection*(phase===2?520:410);if(overlap({...e,x:e.x-10,w:e.w+20},this.player))this.hurt(22,e.x,'attack',e);}if(e.timer<=0){e.state='recover';e.timer=phase===2?.8:1.3;}}
-  else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=phase===2?.9:1.35;}
-  moveBody(e,dt,[this.platforms[0]],this.width);if(overlap(e,this.player)&&e.state!=='windup')this.hurt(13,e.x,'contact',e);
- }
- updateAlgorithm(e,dt,dx){
-  const p=this.player,phase=e.hp<e.maxHp*.5?2:1;e.facing=dx<0?-1:1;
-  if(e.state==='idle'&&e.timer<=0){
-   e.pattern=e.attackNo++%3;e.state='windup';e.timer=phase===2?1:1.4;e.aimX=p.x+15;e.aimY=p.y+28;
-   
-   this.log.add('boss_pattern',{pattern:e.pattern,phase});
-  }else if(e.state==='windup'&&e.timer<=0){
-   e.state='attack';e.timer=.7;
-   if(e.pattern===0){const x=e.x+e.w/2,y=e.y+35,a=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-2;i<=2;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(a+i*.13)*300,vy:Math.sin(a+i*.13)*300,r:6,damage:18,life:5,color:'#9ae4e6'});}
-   if(e.pattern===1){for(const off of [-160,0,160])this.hazards.push({source:{id:e.id,type:e.type},x:clamp(e.aimX+off,30,this.width-90),y:620,w:60,delay:.8,life:.35,damage:20,hit:false});}
-   if(e.pattern===2){for(let x=30;x<this.width-30;x+=115)this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:82,delay:1,life:.35,damage:20,hit:false});}
-  }else if(e.state==='attack'&&e.timer<=0){e.state='recover';e.timer=phase===2?1:1.6;}
-  else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.7;}
- }
- updateCentral(e,dt,dx){
-  e.facing=dx<0?-1:1;const phase=e.hp<e.maxHp*.5?2:1;
-  if(e.state==='idle'&&e.timer<=0){e.pattern=e.attackNo++%3;e.state='windup';e.timer=1.4;e.aimX=this.player.x+15;
-   this.log.add('boss_pattern',{enemy_id:e.id,pattern:e.pattern,phase});
-   
-   if(e.pattern!==1){for(let x=80;x<this.width-80;x+=140){if(e.pattern===2&&Math.abs(x+45-this.width/2)<190)continue;this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:90,delay:1.4+(e.pattern===0?x/this.width*1.7:0),life:.4,damage:phase===2?25:21,hit:false});}}
-  }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=2;
-   if(e.pattern===1){const x=e.x+e.w/2,y=e.y+45;for(let i=-3;i<=3;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:e.facing*Math.cos(i*.2)*170,vy:Math.sin(i*.2)*170,r:9,damage:20,life:8,color:'#f1d58b'});}
-  }else if(e.state==='attack'&&e.timer<=0){e.state='recover';e.timer=phase===2?1.2:2;}
-  else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.6;}
- }
- updateMarket(e,dt,dx){
-  e.facing=dx<0?-1:1;const phase=e.hp<e.maxHp*.5?2:1;
-  if(e.state==='idle'&&e.timer<=0){e.pattern=e.attackNo++%3;e.state='windup';e.timer=1.5;e.aimX=this.player.x+15;e.aimY=this.player.y+28;
-   this.market=[1,2,0][e.pattern];this.marketClock=0;this.emit('market');this.log.add('boss_pattern',{enemy_id:e.id,pattern:e.pattern,phase});
-   
-   if(e.pattern!==0)for(let x=50;x<this.width-50;x+=130){if(e.pattern===2&&Math.abs(x+40-this.width/2)<180)continue;this.hazards.push({source:{id:e.id,type:e.type},x,y:620,w:82,delay:1.5,life:.4,damage:22,hit:false});}
-  }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=1;
-   if(e.pattern===0){const x=e.x+74,y=e.y+45,a=Math.atan2(e.aimY-y,e.aimX-x);for(let i=-3;i<=3;i++)this.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(a+i*.17)*240,vy:Math.sin(a+i*.17)*240,r:8,damage:22,life:7,color:'#e381a0'});}
-  }else if(e.state==='attack'&&e.timer<=0){e.state='recover';e.timer=phase===2?1.2:2;}
-  else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.6;}
- }
  updateThreats(dt){
   for(const b of this.projectiles){if(b.life<=0)continue;b.life-=dt;if(b.life<=0)continue;b.x+=b.vx*dt;b.y+=b.vy*dt;if(overlap({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},this.player)){this.hurt(b.damage,b.x,'projectile',b.source);b.life=0;}if(b.x<0||b.x>this.width||b.y>640||b.y<70)b.life=0;}
   this.projectiles=this.projectiles.filter(b=>b.life>0);

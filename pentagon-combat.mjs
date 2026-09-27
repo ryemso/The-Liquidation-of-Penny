@@ -32,7 +32,7 @@ export function updatePentagonEnemy(g,e,dt,moveBody){
  }else if(e.state==='windup'&&e.timer<=0){e.state='attack';e.timer=rifle?.12:.3;
   if(rifle){const x=e.x+e.w/2,y=e.y+e.h*.4,a=Math.atan2(e.aimY-y,e.aimX-x);g.projectiles.push({source:{id:e.id,type:e.type},x,y,vx:Math.cos(a)*320,vy:Math.sin(a)*320,r:4,damage:e.damage,life:3,color:'#e4bf76'});g.emit('sound',{name:'shot'});}
  }else if(e.state==='attack'){
-  if(!rifle){e.vx=e.lockDirection*(e.boss?390:280);const hit={x:e.lockDirection>0?e.x+e.w/2:e.x-42,y:e.y,w:e.w/2+42,h:e.h};if(!e.struck&&p.x<hit.x+hit.w&&p.x+p.w>hit.x&&p.y<hit.y+hit.h&&p.y+p.h>hit.y){e.struck=true;g.hurt(e.damage,e.x,'attack',e);}}
+  if(e.timer>0&&!rifle){e.vx=e.lockDirection*(e.boss?390:280);const hit={x:e.lockDirection>0?e.x+e.w/2:e.x-42,y:e.y,w:e.w/2+42,h:e.h};if(!e.struck&&p.x<hit.x+hit.w&&p.x+p.w>hit.x&&p.y<hit.y+hit.h&&p.y+p.h>hit.y){e.struck=true;g.hurt(e.damage,e.x,'attack',e);}}
   if(e.timer<=0){e.state='recover';e.timer=e.boss?.85:1.1;e.vx=0;}
  }else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.25;}
  moveBody(e,dt,g.platforms,g.width);return true;

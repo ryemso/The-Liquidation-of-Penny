@@ -148,7 +148,16 @@ function drawEnemy(e){if(e.dead)return;const x=e.x+e.w/2,bottom=e.y+e.h;const he
  const bankSkin=skinPrefix&&!!assets[skinPrefix+'-'+e.type];
  const bankFrame=e.state==='windup'?1:(e.state==='attack'||e.state==='charge')?2:e.state==='recover'?3:0;
  const military=['rifle','pugilist','brute','executor'].includes(e.type);
+ if(e.boss&&e.state==='windup'){
+  const reach=e.pattern===1?90:60;ctx.save();ctx.fillStyle='#f0ac4933';ctx.fillRect(e.lockDirection>0?x:e.x-reach,e.y,e.w/2+reach,e.h);ctx.restore();
+ }
+ // Anchor procedural anticipation and impact to the feet when source poses overlap.
+ ctx.save();if(e.type==='algorithm'||(e.type==='executor'&&e.transformed)){
+  const stretch=e.state==='windup'?.93:e.state==='attack'?1.1:1;ctx.translate(x,bottom);ctx.scale(stretch,1/stretch);ctx.translate(-x,-bottom);
+ }
+
  if(military){const name=e.type==='executor'?(e.transformed?'executor':'official'):e.type;const size=e.type==='executor'?(e.transformed?135.66:45.22):e.type==='brute'?90:48;sprite('pent-'+name,bankFrame,x,bottom,size,e.facing,e.flash);}else sprite(bankSkin?skinPrefix+'-'+e.type:e.type==='central'?'enforcer':e.type==='algorithm'?'drone':e.type,bankSkin?bankFrame:enemyFrame(e),x,bottom,height*.595*(bankSkin&&e.elite?1.15:1),e.type==='boss'?-e.facing:e.facing,e.flash);
+ ctx.restore();
  if(e.type!=='boss'&&(e.hp<e.maxHp||e.elite)){const w=e.elite?65:46;rect(x-w/2,e.y-16,w,4,'#121820');rect(x-w/2,e.y-16,w*e.hp/e.maxHp,4,e.elite?'#d8b277':'#bc7273');if(e.elite)label(e.type==='brute'?'강화 격투병':'적대적 인수체',x,e.y-30,'#edca80',11);}}
 function drawHero(){const p=game.player;let frame=0;if(p.hurt>0)frame=7;else if(p.wallSliding)frame=5;else if(p.attackMove)frame=p.attackMove.elapsed<.035?0:p.attackMove.elapsed<.14?6:0;else if(!p.grounded)frame=p.vy<0?4:5;else if(Math.abs(p.vx)>10)frame=1+Math.floor(game.t*11)%3;
  const x=p.x+p.w/2,bottom=p.y+p.h;
@@ -197,6 +206,13 @@ function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fil
  $('start-chapter2').classList.toggle('hidden',progress.best<5);
 }
 function tick(now){const dt=Math.min((now-last)/1000||0,1/30);last=now;game.update(dt,input);stageMusic.update(dt);render();if(game.state!=='title'&&(now-lastHUD>=50||lastHUDGame!==game||lastHUDState!==game.state||lastHUDRoom!==game.room)){updateHUD();lastHUD=now;lastHUDGame=game;lastHUDState=game.state;lastHUDRoom=game.room;}requestAnimationFrame(tick);}
+const MONSTER_COLUMNS={
+ inst:[[0,314,627,967,1254],[0,314,627,986,1254],[0,314,627,976,1254],[0,314,627,970,1254],[0,314,624,966,1254],[0,314,604,976,1254]],
+ algo:[[0,314,627,1003,1254],[0,314,627,1005,1254],[0,314,627,933,1254],[0,314,627,991,1254],[0,314,627,970,1254],[0,306,620,1007,1254]],
+ bank:[[0,314,627,940,1254],[0,314,627,940,1254],[0,314,627,1014,1254],[0,314,627,951,1254],[0,314,627,940,1254],[0,319,627,976,1254]],
+ market:[[0,314,627,955,1254],[0,314,627,989,1254],[0,314,627,943,1254],[0,314,627,941,1254],[0,314,627,944,1254],[0,314,627,970,1254]],
+ pent:[[0,314,627,968,1254],[0,314,627,948,1254],[0,314,630,1000,1254],[0,314,627,940,1254],[0,314,629,985,1254]]
+};
 async function init(){
  game=new Game({onEvent:event,knowledge:progress.knowledge});bind();updateSaveNote();equipmentUI.renderTitle();updateWallet();
  try{const names=['hero','rubble','bomb','ghost','boss','shield','drone','enforcer'];const backgroundLoads=Promise.allSettled(BACKGROUND_ASSETS.map(async id=>{assets[id]=await imageLoad('./assets/backgrounds/'+id+'.png');}));const imgs=await Promise.all(names.map(n=>imageLoad(`./${n}.png`)));for(let i=0;i<names.length;i++){const n=names[i];assets[n]=atlas(imgs[i],4,['boss','shield','drone','enforcer'].includes(n)?1:2,true,n==='boss'?[0,510,1040,1670,2172]:null);}for(const [prefix,file,boss,cuts] of [
@@ -204,9 +220,9 @@ async function init(){
  ['algo','algorithm-v2','algorithm',[0,195,376,549,755,910,1254]],
  ['bank','central-v2','central',[0,194,389,586,809,983,1254]],
  ['market','market-v2','market',[0,199,390,591,772,947,1254]]
- ]){const sheet=await imageLoad('./assets/monsters/'+file+'.png'),types=['shield','drone','bomb','ghost','rubble',boss];for(let row=0;row<types.length;row++){const strip=document.createElement('canvas'),top=Math.round(cuts[row]/1254*sheet.height);strip.width=sheet.width;strip.height=Math.round(cuts[row+1]/1254*sheet.height)-top;strip.getContext('2d').drawImage(sheet,0,top,sheet.width,strip.height,0,0,sheet.width,strip.height);assets[prefix+'-'+types[row]]=atlas(strip,4,1,false);}}
+ ]){const sheet=await imageLoad('./assets/monsters/'+file+'.png'),types=['shield','drone','bomb','ghost','rubble',boss];for(let row=0;row<types.length;row++){const strip=document.createElement('canvas'),top=Math.round(cuts[row]/1254*sheet.height);strip.width=sheet.width;strip.height=Math.round(cuts[row+1]/1254*sheet.height)-top;strip.getContext('2d').drawImage(sheet,0,top,sheet.width,strip.height,0,0,sheet.width,strip.height);const cutsByRow=MONSTER_COLUMNS[prefix][row];assets[prefix+'-'+types[row]]=atlas(strip,4,1,false,cutsByRow);if(prefix==='algo'&&row===5){const a=assets[prefix+'-'+types[row]];a.frames[1]=a.frames[0];a.frames[2]=a.frames[0];a.frames[3]=a.frames[0];a.maxHeight=a.frames[0].h;}}}
 
- const militarySheet=await imageLoad('./assets/monsters/pentagon-v1.png');const militaryRows=[0,250,476,707,922,1254];for(const [row,name] of ['rifle','pugilist','brute','official','executor'].entries()){const strip=document.createElement('canvas');strip.width=militarySheet.width;strip.height=militaryRows[row+1]-militaryRows[row];strip.getContext('2d').drawImage(militarySheet,0,militaryRows[row],militarySheet.width,strip.height,0,0,strip.width,strip.height);assets['pent-'+name]=atlas(strip,4,1,false,[0,320,640,1000,1254]);}
+ const militarySheet=await imageLoad('./assets/monsters/pentagon-v1.png');const militaryRows=[0,250,476,707,914,1254];for(const [row,name] of ['rifle','pugilist','brute','official','executor'].entries()){const strip=document.createElement('canvas');strip.width=militarySheet.width;strip.height=militaryRows[row+1]-militaryRows[row];strip.getContext('2d').drawImage(militarySheet,0,militaryRows[row],militarySheet.width,strip.height,0,0,strip.width,strip.height);assets['pent-'+name]=atlas(strip,4,1,false,MONSTER_COLUMNS.pent[row]);if(name==='executor'){const a=assets['pent-'+name];a.frames=a.frames.map(()=>a.frames[0]);a.maxHeight=a.frames[0].h;}}
  const backgroundResults=await backgroundLoads;const failedBackground=backgroundResults.find(r=>r.status==='rejected');if(failedBackground)throw failedBackground.reason;
  loaded=true;$('start').disabled=false;$('start').textContent='시장에 진입하기 ↗';requestAnimationFrame(tick);}
  catch(err){$('start').textContent='에셋 다시 불러오기';$('start').disabled=false;$('start').onclick=()=>location.reload();$('save-note').textContent='이미지를 불러오지 못했습니다. 다시 불러오기를 눌러주세요.';console.error('Asset load failed:',err);}
