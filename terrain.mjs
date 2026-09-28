@@ -13,8 +13,9 @@ export function terrainFor(spec,index){
  for(let i=0;i<count;i++){let x=420+i*(spec.width-760)/(count-1);if(i%2===0)for(const wall of walls)if(x+40>wall.x&&x<wall.x+wall.w)x=wall.x+wall.w+32;extra.push([i%2?'ghost':(spec.chapter===1?'rubble':'shield'),x,i%2?310:620]);}
  return {walls,traps,ledges,extra};
 }
-export function collideWalls(body,oldX,oldY,walls){
+export function collideWalls(body,oldX,oldY,walls,solidOnly=false){
  for(const w of walls){
+  if(solidOnly&&!w.solid)continue;
   const vertical=oldY<w.y+w.h&&oldY+body.h>w.y;
   if(vertical&&oldX+body.w<=w.x&&body.x+body.w>w.x){body.x=w.x-body.w;body.vx=0;}
   else if(vertical&&oldX>=w.x+w.w&&body.x<w.x+w.w){body.x=w.x+w.w;body.vx=0;}

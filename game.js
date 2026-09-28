@@ -1,3 +1,4 @@
+import {drawUpperBoss} from './upper-boss-art.mjs';
 import {createImageLoader} from './asset-loader.mjs';
 import {skillCost,POLICY_RULES} from './pentagon-combat.mjs';
 import {BACKGROUND_ASSETS,locationFor,drawLocation} from './backgrounds.mjs';
@@ -148,7 +149,7 @@ function drawEnemy(e){if(e.dead)return;const x=e.x+e.w/2,bottom=e.y+e.h;const he
  const bankSkin=skinPrefix&&!!assets[skinPrefix+'-'+e.type];
  const bankFrame=e.state==='windup'?1:(e.state==='attack'||e.state==='charge')?2:e.state==='recover'?3:0;
  const military=['rifle','pugilist','brute','executor'].includes(e.type);
- if(e.boss&&e.state==='windup'){
+ if(e.boss&&!e.skillActive&&e.state==='windup'){
   const reach=e.pattern===1?90:60;ctx.save();ctx.fillStyle='#f0ac4933';ctx.fillRect(e.lockDirection>0?x:e.x-reach,e.y,e.w/2+reach,e.h);ctx.restore();
  }
  // Anchor procedural anticipation and impact to the feet when source poses overlap.
@@ -157,7 +158,7 @@ function drawEnemy(e){if(e.dead)return;const x=e.x+e.w/2,bottom=e.y+e.h;const he
  }
 
  if(military){const name=e.type==='executor'?(e.transformed?'executor':'official'):e.type;const size=e.type==='executor'?(e.transformed?135.66:45.22):e.type==='brute'?90:48;sprite('pent-'+name,bankFrame,x,bottom,size,e.facing,e.flash);}else sprite(bankSkin?skinPrefix+'-'+e.type:e.type==='central'?'enforcer':e.type==='algorithm'?'drone':e.type,bankSkin?bankFrame:enemyFrame(e),x,bottom,height*.595*(bankSkin&&e.elite?1.15:1),e.type==='boss'?-e.facing:e.facing,e.flash);
- ctx.restore();
+ ctx.restore();drawUpperBoss(ctx,e);
  if(e.type!=='boss'&&(e.hp<e.maxHp||e.elite)){const w=e.elite?65:46;rect(x-w/2,e.y-16,w,4,'#121820');rect(x-w/2,e.y-16,w*e.hp/e.maxHp,4,e.elite?'#d8b277':'#bc7273');if(e.elite)label(e.type==='brute'?'강화 격투병':'적대적 인수체',x,e.y-30,'#edca80',11);}}
 function drawHero(){const p=game.player;let frame=0;if(p.hurt>0)frame=7;else if(p.wallSliding)frame=5;else if(p.attackMove)frame=p.attackMove.elapsed<.035?0:p.attackMove.elapsed<.14?6:0;else if(!p.grounded)frame=p.vy<0?4:5;else if(Math.abs(p.vx)>10)frame=1+Math.floor(game.t*11)%3;
  const x=p.x+p.w/2,bottom=p.y+p.h;
