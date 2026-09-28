@@ -38,7 +38,22 @@ function archiveRun(){try{const rows=JSON.parse(localStorage.getItem('penny-runs
 function exportRuns(){let rows=[];try{rows=JSON.parse(localStorage.getItem('penny-runs-v1')||'[]');}catch{}if(!Array.isArray(rows))rows=[];if(game?.log.started)rows=[...rows.filter(r=>r.run_id!==game.log.runId),game.log.export()];const u=URL.createObjectURL(new Blob([JSON.stringify({schema_version:1,runs:rows},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download='penny-play-sessions.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function clearInput(){input.left=input.right=input.attack=input.down=input.up=false;game?.action('jump_release');}
 function showNotice(text,duration=3){$('notice').textContent=text;$('notice').classList.remove('hidden');noticeUntil=performance.now()+duration*1000;}
-function showModal(html,kind){clearInput();modalKind=kind;$('modal-inner').dataset.kind=kind;lastFocus=document.activeElement;$('modal-inner').innerHTML=html;$('modal').classList.remove('hidden');requestAnimationFrame(()=>$('modal-inner').querySelector('button')?.focus());}
+function showModal(html,kind,{preserveScroll=false}={}){
+ clearInput();modalKind=kind;const root=$('modal-inner'),active=document.activeElement;
+ const keep=preserveScroll&&root.dataset.kind===kind;
+ const top=keep?root.scrollTop:0,left=keep?root.scrollLeft:0;
+ const key=keep&&root.contains(active)?['data-upgrade','data-buy','data-equip','id'].find(k=>active.hasAttribute(k)):null;
+ const value=key?active.getAttribute(key):null;
+ root.dataset.kind=kind;lastFocus=active;root.innerHTML=html;$('modal').classList.remove('hidden');root.scrollTop=top;root.scrollLeft=left;
+ const content=root.firstElementChild;
+ requestAnimationFrame(()=>{
+  if(root.firstElementChild!==content||$('modal').classList.contains('hidden'))return;
+  let target=key?Array.from(root.querySelectorAll(`[${key}]`)).find(el=>el.getAttribute(key)===value):null;
+  if(target?.disabled){target=target.closest('article')||root;target.tabIndex=-1;}
+  if(!target&&keep){target=root;root.tabIndex=-1;}
+  (target||root.querySelector('button'))?.focus({preventScroll:true});
+ });
+}
 function hideModal(){delete $('modal-inner').dataset.kind;modalKind='';modalCards=[];$('modal').classList.add('hidden');$('modal-inner').innerHTML='';canvas.focus({preventScroll:true});}
 const fmtTime=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 const cardHTML=(card,i,shop=false)=>`<button class="card" data-card="${card.id}" ${shop&&game.player.gold<card.price?'disabled':''}><span class="card-number">${shop?'':`[${i+1}]`}</span><span class="card-symbol">${card.symbol}</span><span class="tag">${card.tag}</span><h3>${card.name}</h3><p>${card.desc}</p>${shop?`<span class="price">◈ ${card.price}</span>`:''}</button>`;
