@@ -1,4 +1,4 @@
-export const UPPER_SKILLS={algorithm:'주식분할',central:'계좌 박살내기',market:'작전주 작전시작'};
+export const UPPER_SKILLS={algorithm:'주식분할',central:'계좌 박살내기'};
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const touches=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 export function releaseCapture(g){if(g.player.capture){g.player.capture=null;g.player.inv=Math.max(g.player.inv,.65);}}
@@ -6,22 +6,22 @@ export function updateCapture(g,dt){const c=g.player.capture;if(!c)return;c.rema
 // Slab intersection gives the first contact; no per-pixel or per-distance sampling.
 export function segmentHit(x,y,dx,dy,box){let lo=0,hi=1;for(const [p,d,min,max] of [[x,dx,box.x,box.x+box.w],[y,dy,box.y,box.y+box.h]]){if(Math.abs(d)<1e-9){if(p<min||p>max)return null;continue;}let a=(min-p)/d,b=(max-p)/d;if(a>b)[a,b]=[b,a];lo=Math.max(lo,a);hi=Math.min(hi,b);if(lo>hi)return null;}return lo;}
 function recover(e,seconds){e.skillState='recover';e.state='recover';e.timer=seconds;e.vx=0;}
-function begin(g,e){e.skillActive=true;e.skillName=UPPER_SKILLS[e.type];e.skillState='prepare';e.state='windup';e.timer=e.type==='market'?.3:.75;e.struck=false;e.lockDirection=e.facing;g.floatText(e.x+e.w/2,e.y-35,e.skillName,'#ffd18c',18);g.log.add('boss_pattern',{enemy_id:e.id,pattern:e.skillName});}
+function begin(g,e){e.skillActive=true;e.skillName=UPPER_SKILLS[e.type];e.skillState='prepare';e.state='windup';e.timer=.75;e.struck=false;e.lockDirection=e.facing;g.floatText(e.x+e.w/2,e.y-35,e.skillName,'#ffd18c',18);g.log.add('boss_pattern',{enemy_id:e.id,pattern:e.skillName});}
 export function updateUpperBoss(g,e,dt,moveBody){
- if(!UPPER_SKILLS[e.type])return false;
+ if(!UPPER_SKILLS[e.type]&&!e.sniper)return false;
  const p=g.player,cx=e.x+e.w/2,dx=p.x+p.w/2-cx;
  if(!e.skillActive){
   e.signatureCD=Math.max(0,(e.signatureCD||0)-dt);
   if(e.state!=='idle'||e.timer>0)return false;
   if(e.signatureCD>0)return false;
   // Interleave signature moves with the close combat kit; never read player inputs.
-  const distance=Math.abs(dx),eligible=e.type==='algorithm'?distance<380:e.type==='central'?distance>110:distance>260;
+  const distance=Math.abs(dx),eligible=e.type==='algorithm'?distance<380:distance>110;
   if(!eligible)return false;
   e.facing=dx<0?-1:1;begin(g,e);
  }
  e.vx=0;
  if(e.skillState==='recover'){
-  if(e.timer<=0){e.skillActive=false;e.skillName=null;e.skillState=null;e.state='idle';e.timer=.3;e.signatureCD=e.type==='algorithm'?5:7;}
+  if(e.timer<=0){if(e.sniper){e.dead=true;return true;}e.skillActive=false;e.skillName=null;e.skillState=null;e.state='idle';e.timer=.3;e.signatureCD=e.type==='algorithm'?5:7;}
   moveBody(e,dt,g.bossFloor,g.width);return true;
  }
  if(e.type==='algorithm'){
@@ -45,15 +45,7 @@ export function updateUpperBoss(g,e,dt,moveBody){
   if(e.skillState==='impact'&&e.timer<=0)recover(e,1.8);
   moveBody(e,dt,g.bossFloor,g.width);return true;
  }
- if(e.type==='market'){
-  if(e.skillState==='prepare'&&e.timer<=0){
-   e.skillState='reposition';e.state='attack';e.timer=1.6;
-   const wanted=clamp(cx-Math.sign(dx||1)*330,100,g.width-100);
-   let perch=null;for(const platform of g.platforms){if(platform.ground||platform.solid||platform.y<300||platform.y>530||platform.y<e.y+e.h-220)continue;const px=platform.x+platform.w/2;if(Math.abs(px-wanted)<200&&Math.abs(px-cx)<550&&(!perch||Math.abs(px-wanted)<Math.abs(perch.x+perch.w/2-wanted)))perch=platform;}
-   e.targetX=perch?perch.x+perch.w/2:wanted;const bottom=perch?perch.y:620;const flight=(850+Math.sqrt(Math.max(0,850*850+3120*(bottom-e.y-e.h))))/1560;
-   e.vy=-850;e.grounded=false;e.airSpeed=(e.targetX-cx)/Math.max(.3,flight);
-  }
-  if(e.skillState==='reposition'){e.vx=e.airSpeed;moveBody(e,dt,g.platforms,g.width);if(e.grounded||e.timer<=0){e.skillState='aim';e.state='windup';e.timer=1.05;e.vx=0;}return true;}
+ if(e.sniper){
   if(e.skillState==='aim'){
    e.aimX=p.x+p.w/2;e.aimY=p.y+p.h/2;e.facing=e.aimX<cx?-1:1;
    if(e.timer<=0){e.skillState='locked';e.timer=.4;const x=cx,y=e.y+e.h*.4,a=Math.atan2(e.aimY-y,e.aimX-x);e.shot={x,y,dx:Math.cos(a)*2000,dy:Math.sin(a)*2000};}

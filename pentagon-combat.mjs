@@ -1,3 +1,4 @@
+import {updateUpperBoss} from './upper-boss.mjs';
 export const POLICY_RULES={
  rate_up:{name:'금리 인상',costs:{profit:40,leverage:15,circuit:20}},
  devalue:{name:'화폐가치 하락',costs:{profit:50,leverage:20,circuit:25}},
@@ -14,14 +15,15 @@ export function updatePentagon(g,dt){
  if(g.skillPolicy){g.skillPolicy.remaining-=dt;if(g.skillPolicy.remaining<=0||!g.enemies.some(e=>e.id===g.skillPolicy.owner&&!e.dead))clearPolicy(g);}
  for(const e of g.enemies){if(e.dead||e.type!=='executor')continue;
   if(!e.transformed){e.introTime+=dt;if(e.introTime<3-1e-8)continue;
-   const feet=e.y+e.h,center=e.x+e.w/2;e.transformed=true;e.w=g.player.w*3;e.h=g.player.h*3;e.x=center-e.w/2;e.y=feet-e.h;e.timer=.8;e.state='recover';e.policyClock=1;e.policyIndex=0;
+   const feet=e.y+e.h,center=e.x+e.w/2;e.transformed=true;e.w=g.player.w*3;e.h=g.player.h*3;e.x=center-e.w/2;e.y=feet-e.h;e.timer=.8;e.state='recover';e.policyClock=1;e.policyIndex=0;e.sniperClock=6;
    g.shake=10;g.burst(center,feet-e.h/2,'#d9bc79',35);g.emit('sound',{name:'roar'});g.log.add('boss_transformed',{enemy_id:e.id,scale:3});
    g.emit('notice',{text:'집행관 변신 · 스킬 버튼의 필요 수익을 확인하세요',duration:4});
-  }else if(g.freeze<=0){e.policyClock-=dt;if(e.policyClock<=0){applyPolicy(g,e,['rate_up','devalue','rate_down'][e.policyIndex++%3]);e.policyClock=8;}}
+  }else if(g.freeze<=0){e.sniperClock=(e.sniperClock??6)-dt;if(e.sniperClock<=0&&!g.enemies.some(m=>m.sniper&&m.summoner===e.id&&!m.dead)){summonSnipers(g,e);e.sniperClock=14;}e.policyClock-=dt;if(e.policyClock<=0){applyPolicy(g,e,['rate_up','devalue','rate_down'][e.policyIndex++%3]);e.policyClock=8;}}
  }
 }
 export function paySkill(g,name){const cost=skillCost(g,name);if(g.player.profit<cost){g.emit('notice',{text:`필요 수익 ${cost} · 현재 ${Math.floor(g.player.profit)}`,duration:2});g.log.add('skill_resource_denied',{skill:name,required:cost,available:g.player.profit});return false;}if(name!=='profit'&&cost){g.player.profit-=cost;g.log.add('skill_resource_spent',{skill:name,amount:cost,policy:g.skillPolicy?.kind});}return true;}
 export function updatePentagonEnemy(g,e,dt,moveBody){
+ if(e.sniper){if(e.beam)e.beam.remaining=Math.max(0,e.beam.remaining-dt);return updateUpperBoss(g,e,dt,moveBody);}
  if(!['rifle','pugilist','brute','executor'].includes(e.type))return false;
  if(e.type==='executor'&&!e.transformed){e.vx=0;return true;}
  const p=g.player,dx=p.x+p.w/2-e.x-e.w/2,dy=p.y-e.y,rifle=e.type==='rifle';e.vx=0;
@@ -36,4 +38,19 @@ export function updatePentagonEnemy(g,e,dt,moveBody){
   if(e.timer<=0){e.state='recover';e.timer=e.boss?.85:1.1;e.vx=0;}
  }else if(e.state==='recover'&&e.timer<=0){e.state='idle';e.timer=.25;}
  moveBody(e,dt,g.platforms,g.width);return true;
+}
+
+export function summonSnipers(g,boss){
+ if(boss.dead||!boss.transformed||g.enemies.some(e=>e.sniper&&e.summoner===boss.id&&!e.dead))return false;
+ g.enemies=g.enemies.filter(e=>!(e.sniper&&e.dead&&e.summoner===boss.id));
+ const slots=g.platforms.filter(p=>!p.ground&&!p.solid&&p.w>=60);
+ for(let i=0;i<5;i++){
+  const platform=slots[i%Math.max(1,slots.length)];
+  const x=platform?platform.x+platform.w*(i>=slots.length?.75:.25):100+(g.width-230)*i/4;
+  const e=g.makeEnemy('rifle',x,platform?.y??620);e.sniper=true;e.summoner=boss.id;e.optional=true;e.gold=0;e.activated=true;
+  e.skillActive=true;e.skillName='작전주 작전시작';e.skillState='aim';e.state='windup';e.timer=1.1+i*.3;e.facing=g.player.x<e.x?-1:1;
+  g.enemies.push(e);
+ }
+ g.floatText(boss.x+boss.w/2,boss.y-35,'작전주 작전시작','#ffd18c',18);
+ g.log.add('boss_pattern',{enemy_id:boss.id,pattern:'작전주 작전시작',summoned:5});return true;
 }
