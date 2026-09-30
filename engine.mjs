@@ -1,3 +1,4 @@
+import {clearOptions,chooseOption,optionDamage,updateOptions} from './options-pattern.mjs';
 import {releaseCapture,updateCapture} from './upper-boss.mjs';
 import {updateMeleeBoss} from './melee-boss.mjs';
 import {skillCost,paySkill,clearPolicy,updatePentagon,updatePentagonEnemy} from './pentagon-combat.mjs';
@@ -76,7 +77,7 @@ export class Game{
  emit(type,data={}){this.onEvent({type,...data});}
  start(){this.state='playing';this.log.start();this.emit('room',{room:this.spec});this.emit('notice',{text:'← → 이동 · C 2단 점프 · X 공격 · Z 대시',duration:7});}
  setRoom(index,announce=true){
-  if(!ROOM_SPECS[index])return;releaseCapture(this);clearPolicy(this,'room_change');
+  if(!ROOM_SPECS[index])return;releaseCapture(this);clearPolicy(this,'room_change');clearOptions(this);
   if(this.log?.started&&this.spec.kind==='shop'&&!this.rewardGiven){this.rewardGiven=true;this.log.add('stage_clear',{duration:this.totalTime-this.log.stageAt});}if(this.log?.started)this.log.add('stage_exit',{duration:this.totalTime-this.log.stageAt,cleared:this.rewardGiven||this.spec.kind==='shop'});this.totems.roomChanged();this.equipmentEffects.resetRoom();this.room=index;this.lastClearPizza=0;this.spec=ROOM_SPECS[index];this.width=this.spec.width;this.worldTop=['shop','boss'].includes(this.spec.kind)?70:-360;this.platforms=[{x:0,y:620,w:this.width,h:100,ground:true},...this.spec.platforms.map(([x,y,w])=>({x,y,w,h:18}))];
   this.bossFloor=[this.platforms[0]];this.terrain=terrainFor(this.spec,index);this.platforms.push(...this.terrain.walls,...this.terrain.ledges);
   this.marketPeriod=[24,20,18,18,16,18][this.spec.chapter-1];this.marketClock=Math.min(this.marketClock,this.marketPeriod-4);this.pressureClock=0;
@@ -113,6 +114,7 @@ export class Game{
   if(this.player.capture&&!['circuit','jump_release'].includes(name))return;
   if(name==='jump_release'){this.player.jumpHeld=false;if(this.state!=='playing')return;}
   if(this.state!=='playing')return;
+  if(name==='option_long'||name==='option_short'){chooseOption(this,name.slice(7));return;}
   const p=this.player;
   if(name==='drop'){
    const support=this.platforms.find(q=>!q.ground&&!q.solid&&Math.abs(p.y+p.h-q.y)<2&&p.x+p.w>q.x&&p.x<q.x+q.w);
@@ -166,7 +168,7 @@ export class Game{
   if(!this.relic.offers.includes(id)||!this.totems.acquire(id))return false;
   this.relic.taken=true;this.totems.log('totem_reward_selected',id,{offers:[...this.relic.offers]});this.state='totems';this.emit('totems',{acquired:id});return true;
  }
- damage(){return this.stats.atk*this.equipmentEffects.damage*(this.market===1?1.15:1)*(this.market===2?1+this.stats.short*.3:1)*(this.player.leverage>0?1.65:1);}
+ damage(){return optionDamage(this)*this.stats.atk*this.equipmentEffects.damage*(this.market===1?1.15:1)*(this.market===2?1+this.stats.short*.3:1)*(this.player.leverage>0?1.65:1);}
  attack(direction='side'){if(this.player.capture)return;const p=this.player;if(p.attackCD>0||p.dash>0||p.hurt>0)return;
   this.log.add('attack',{skill:'basic',direction});p.combo=p.comboClock>0?(p.combo+1)%3:0;p.comboClock=.9;
   p.attack=.23;p.attackCD=(p.combo===2?.4:.27)*this.equipmentEffects.attackInterval*(p.leverage>0?.85:1);
@@ -194,7 +196,7 @@ export class Game{
   this.floatText(e.x+e.w/2,e.y-12,String(Math.round(amount)),crit?'#fbd88e':'#edf0e8',crit?22:16);
   this.burst(e.x+e.w/2,e.y+e.h*.5,crit?'#ffd47e':'#d4dce3',7);
   if(this.player.leverage>0)this.player.leverageDamage+=dealt;
-  if(e.hp<=0){this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;const gold=Math.round(e.gold*(this.market===2?1.35:1));this.player.gold+=gold;this.floatText(e.x,e.y-40,`+${gold} 시드`,'#f0c875',13);this.burst(e.x+e.w/2,e.y+e.h/2,'#dcb96d',18);this.effects.push({type:'impact',x:e.x+e.w/2,y:e.y+e.h/2,strong:true,life:.35,max:.35});if(e.boss){if(this.player.capture?.owner===e.id)releaseCapture(this);if(e.type==='executor')clearPolicy(this,'boss_defeated');for(const minion of this.enemies)if(minion.summoner===e.id)minion.dead=true;this.shake=13;this.projectiles=[];this.hazards=[];this.emit('sound',{name:'bossdown'});}}
+  if(e.hp<=0){this.log.add('enemy_defeated',{enemy:e.type,enemy_id:e.id,optional:!!e.optional});e.dead=true;this.kills++;if(this.player.leverage>0)this.player.leverageKills++;const gold=Math.round(e.gold*(this.market===2?1.35:1));this.player.gold+=gold;this.floatText(e.x,e.y-40,`+${gold} 시드`,'#f0c875',13);this.burst(e.x+e.w/2,e.y+e.h/2,'#dcb96d',18);this.effects.push({type:'impact',x:e.x+e.w/2,y:e.y+e.h/2,strong:true,life:.35,max:.35});if(e.boss){if(this.optionContract?.owner===e.id||this.optionLoss?.owner===e.id)clearOptions(this);if(this.player.capture?.owner===e.id)releaseCapture(this);if(e.type==='executor')clearPolicy(this,'boss_defeated');for(const minion of this.enemies)if(minion.summoner===e.id)minion.dead=true;this.shake=13;this.projectiles=[];this.hazards=[];this.emit('sound',{name:'bossdown'});}}
  }
  hurt(amount,sourceX,kind='attack',source=null){
   // Apply once at player damage resolution, including enemy-owned projectiles and hazards.
@@ -211,13 +213,13 @@ export class Game{
  buy(id){if(this.state!=='shop')return false;const card=CARDS.find(c=>c.id===id);const cost=id==='heal'?35:card?.price;if(cost==null||this.player.gold<cost)return false;if(id==='heal'&&this.player.hp>=this.player.maxHp)return false;this.player.gold-=cost;this.spent+=cost;if(id==='heal')this.heal(40);else this.applyCard(id);return true;}
  closeShop(){if(this.state==='shop'){this.state='playing';this.shopVisited=true;this.emit('resume');this.emit('notice',{text:this.spec.chapter===1?'“다음 거래소에는 큰놈이 기다리고 있네.” · 오른쪽 출구 ↑':'“방패 뒤의 틈을 보게. 정면만 고집하지 말고.” · 오른쪽 출구 ↑',duration:4});}}
  rewardOptions(){const pool=CARDS.filter(c=>(c.chapter||1)<=this.spec.chapter);for(let i=pool.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}return pool.slice(0,3);}
- finish(won){if(['dead','victory'].includes(this.state))return;releaseCapture(this);clearPolicy(this,'run_end');this.log.add(won?'run_victory':'player_death',{x:this.player.x,y:this.player.y});this.log.end(won?'victory':'death');this.state=won?'victory':'dead';if(won)this.rank='MARKET LEGEND';this.emit('finish',{won,knowledge:Math.max(1,this.clearedRooms)+(won?5:0)});}
+ finish(won){if(['dead','victory'].includes(this.state))return;releaseCapture(this);clearPolicy(this,'run_end');clearOptions(this);this.log.add(won?'run_victory':'player_death',{x:this.player.x,y:this.player.y});this.log.end(won?'victory':'death');this.state=won?'victory':'dead';if(won)this.rank='MARKET LEGEND';this.emit('finish',{won,knowledge:Math.max(1,this.clearedRooms)+(won?5:0)});}
  burst(x,y,color,n){for(let i=0;i<n;i++)this.particles.push({x,y,vx:(this.random()-.5)*240,vy:-40-this.random()*180,life:.25+this.random()*.4,max:.7,color,size:2+Math.floor(this.random()*3)});}
  floatText(x,y,text,color,size){this.texts.push({x,y,text,color,size,life:1,max:1});}
  update(dt,input={}){
   dt=clamp(dt,0,1/30);this.t+=dt;
   if(this.state!=='playing')return;
-  this.totalTime+=dt;updatePentagon(this,dt);this.totems.update(dt,input);this.equipmentEffects.update(dt);
+  this.totalTime+=dt;updateOptions(this,dt);updatePentagon(this,dt);this.totems.update(dt,input);this.equipmentEffects.update(dt);
   if(this.relic?.hidden&&!this.relic.revealed&&Math.hypot(this.player.x-this.relic.x,this.player.y-this.relic.y)<180){this.relic.revealed=true;this.log.add('secret_found');this.emit('notice',{text:'숨겨진 보관함 발견',duration:2});}
   if(this.trialEnemy?.dead&&this.relic?.trialStarted&&!this.relic.trialComplete){this.relic.trialComplete=true;this.relic.waitForExit=false;this.player.gold+=25;const extra=TOTEMS.find(t=>!this.totems.owned.includes(t.id)&&!this.relic.offers.includes(t.id));if(extra)this.relic.offers.push(extra.id);this.log.add('elite_trial_clear',{offers:this.relic.offers});this.emit('notice',{text:'선택 도전 완료 · 시드 +25 · 선택지 추가 · 상자를 회수하세요',duration:3});}
 
@@ -291,6 +293,7 @@ export class Game{
   }
  }
  updateEnemy(e,dt){
+  if(this.optionContract?.owner===e.id){e.vx=0;moveBody(e,dt,this.bossFloor,this.width);return;}
   if(e.stagger>0){e.stagger=Math.max(0,e.stagger-dt);e.vx=0;if(!e.flying)moveBody(e,dt,this.platforms,this.width);return;}
   if(e.routeBand&&((e.routeBand==='upper'&&this.player.y>500)||(e.routeBand==='lower'&&this.player.y+this.player.h<460)||Math.abs(this.player.y-e.y)>230)){e.vx=0;if(!e.flying)moveBody(e,dt,this.platforms,this.width);return;}
 

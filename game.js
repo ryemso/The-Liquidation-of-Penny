@@ -103,7 +103,7 @@ function bind(){
  document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();game.action(b.dataset.action);canvas.focus({preventScroll:true});}));
  document.querySelectorAll('[data-action=jump]').forEach(b=>{b.addEventListener('pointerdown',e=>b.setPointerCapture(e.pointerId));for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>game.action('jump_release'));});
  document.querySelectorAll('[data-hold]').forEach(b=>{const key=b.dataset.hold;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);input[key]=true;});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>input[key]=false);});
- const mapping={KeyC:'jump',KeyX:'attack',KeyZ:'dash',KeyA:'profit',KeyS:'leverage',KeyD:'circuit',ArrowUp:'interact',Enter:'interact'};
+ const mapping={KeyQ:'option_long',KeyE:'option_short',KeyC:'jump',KeyX:'attack',KeyZ:'dash',KeyA:'profit',KeyS:'leverage',KeyD:'circuit',ArrowUp:'interact',Enter:'interact'};
  window.addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(e.key==='Tab'&&!$('modal').classList.contains('hidden')){const bs=[...$('modal').querySelectorAll('button:not(:disabled)')];if(bs.length){if(e.shiftKey&&document.activeElement===bs[0]){e.preventDefault();bs.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===bs.at(-1)){e.preventDefault();bs[0].focus();}}return;}
@@ -212,7 +212,16 @@ function render(){
  if(game.freeze>0){rect(0,0,1280,720,'#5284a91c');ctx.strokeStyle='#84c9ed88';ctx.lineWidth=5;ctx.strokeRect(3,3,1274,714);label('TRADING HALT',640,510,'#bdeaff',16);}
  const vignette=ctx.createRadialGradient(640,380,270,640,350,750);vignette.addColorStop(0,'#01050b00');vignette.addColorStop(1,'#01050b75');ctx.fillStyle=vignette;ctx.fillRect(0,0,1280,720);
 }
-function updateHUD(){totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('hp-text').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;$('profit-fill').style.width=`${p.profit}%`;$('profit-text').textContent=`${Math.floor(p.profit)}%`;$('gold').textContent=String(p.gold);$('room-number').textContent=`${String(game.spec.localRoom).padStart(2,'0')} / ${String(chapterRoomCounts.get(game.spec.chapter)).padStart(2,'0')}`;const m=MARKETS[game.market];$('market-name').textContent=m.name;$('market-name').style.color=m.color;$('market-detail').textContent=m.detail;$('market-warning').textContent=game.marketClock>game.marketPeriod-4?`${Math.ceil(game.marketPeriod-game.marketClock)}초 후 ${MARKETS[(game.market+1)%3].name}`:'';
+function updateOptionHUD(){
+ const panel=$('option-panel'),c=game.optionContract,r=game.optionResult,loss=game.optionLoss;
+ panel.classList.toggle('hidden',game.state!=='playing'||(!c&&!r&&!loss));
+ $('option-title').textContent=c?'옵션 만기':r?'옵션 결산':'능력치 손실';
+ $('option-hint').textContent=c?c.hint:r?.text||'공격력의 일부가 일시적으로 사라졌습니다';
+ $('option-timer').textContent=c?`${c.phase==='choose'?'선택 마감':'만기까지'} ${c.remaining.toFixed(1)}초 · ${c.choice?(c.choice==='long'?'롱 선택':'숏 선택'):'미선택'}`:loss?`공격력 −30% · 복구까지 ${loss.remaining.toFixed(1)}초`:'';
+ $('option-choices').classList.toggle('hidden',!c);
+ for(const side of ['long','short']){const b=$('option-'+side);b.disabled=!c||c.phase!=='choose'||game.state!=='playing';b.setAttribute('aria-pressed',String(c?.choice===side));}
+}
+function updateHUD(){updateOptionHUD();totemHUD(game,$('totem-hud'));const p=game.player;$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('hp-text').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;$('profit-fill').style.width=`${p.profit}%`;$('profit-text').textContent=`${Math.floor(p.profit)}%`;$('gold').textContent=String(p.gold);$('room-number').textContent=`${String(game.spec.localRoom).padStart(2,'0')} / ${String(chapterRoomCounts.get(game.spec.chapter)).padStart(2,'0')}`;const m=MARKETS[game.market];$('market-name').textContent=m.name;$('market-name').style.color=m.color;$('market-detail').textContent=m.detail;$('market-warning').textContent=game.marketClock>game.marketPeriod-4?`${Math.ceil(game.marketPeriod-game.marketClock)}초 후 ${MARKETS[(game.market+1)%3].name}`:'';
  const alive=game.enemies.filter(e=>!e.dead).length;$('enemy-count').textContent=game.spec.kind==='shop'?'안전 구역':game.exploration?'탐험 · 출구 도달 후 ↑로 보상':alive?`남은 적 ${alive}`:'구역 정리 완료';
  const boss=game.enemies.find(e=>e.boss);if(boss){$('boss-fill').style.width=`${Math.max(0,boss.hp)/boss.maxHp*100}%`;$('boss-phase').textContent=boss.type==='executor'?(boss.transformed?(game.skillPolicy?POLICY_RULES[game.skillPolicy.kind].name+' · '+Math.ceil(game.skillPolicy.remaining)+'초':'변신 · 근접전'):'변신까지 '+Math.max(0,3-boss.introTime).toFixed(1)+'초'):(boss.hp<boss.maxHp*.5?'PHASE 02':'PHASE 01');}
  const skillList=[['profit',p.profitCD,`수익 ${skillCost(game,'profit')} 이상`],['leverage',p.leverageCD,'8초 / 피해 ×1.65'],['circuit',p.circuitCD,`적 ${2+game.stats.circuitExtra}초 정지`]];

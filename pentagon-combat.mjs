@@ -18,7 +18,7 @@ export function updatePentagon(g,dt){
    const feet=e.y+e.h,center=e.x+e.w/2;e.transformed=true;e.w=g.player.w*3;e.h=g.player.h*3;e.x=center-e.w/2;e.y=feet-e.h;e.timer=.8;e.state='recover';e.policyClock=1;e.policyIndex=0;e.sniperClock=6;
    g.shake=10;g.burst(center,feet-e.h/2,'#d9bc79',35);g.emit('sound',{name:'roar'});g.log.add('boss_transformed',{enemy_id:e.id,scale:3});
    g.emit('notice',{text:'집행관 변신 · 스킬 버튼의 필요 수익을 확인하세요',duration:4});
-  }else if(g.freeze<=0){e.sniperClock=(e.sniperClock??6)-dt;if(e.sniperClock<=0&&!g.enemies.some(m=>m.sniper&&m.summoner===e.id&&!m.dead)){summonSnipers(g,e);e.sniperClock=14;}e.policyClock-=dt;if(e.policyClock<=0){applyPolicy(g,e,['rate_up','devalue','rate_down'][e.policyIndex++%3]);e.policyClock=8;}}
+  }else if(g.freeze<=0&&g.optionContract?.owner!==e.id&&!(e.stagger>0)){e.sniperClock=(e.sniperClock??6)-dt;if(e.sniperClock<=0&&!g.enemies.some(m=>m.sniper&&m.summoner===e.id&&!m.dead)){summonSnipers(g,e);e.sniperClock=14;}e.policyClock-=dt;if(e.policyClock<=0){applyPolicy(g,e,['rate_up','devalue','rate_down'][e.policyIndex++%3]);e.policyClock=8;}}
  }
 }
 export function paySkill(g,name){const cost=skillCost(g,name);if(g.player.profit<cost){g.emit('notice',{text:`필요 수익 ${cost} · 현재 ${Math.floor(g.player.profit)}`,duration:2});g.log.add('skill_resource_denied',{skill:name,required:cost,available:g.player.profit});return false;}if(name!=='profit'&&cost){g.player.profit-=cost;g.log.add('skill_resource_spent',{skill:name,amount:cost,policy:g.skillPolicy?.kind});}return true;}
