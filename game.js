@@ -73,7 +73,7 @@ function event(e){
  if(e.type==='finish'){archiveRun();stageMusic.setScene('title',game.spec.chapter);
   if(!savedRun){progress.knowledge+=e.knowledge;progress.runs++;progress.best=Math.max(progress.best,game.room+1);if(e.won)progress.wins++;savedRun=true;if(!saveProgress())showNotice('브라우저 저장이 차단되어 기록은 이 화면을 닫기 전까지만 유지됩니다.',12);}
   const won=e.won;
-  showModal(`<span class="eyebrow">${won?'LISTING APPROVED · 상장 승인':'LIQUIDATED · 이번 도전 종료'}</span><h2 id="modal-title">${won?'Sovereign Cap → Market Legend':'청산되었습니다'}</h2><p>${won?'펜타곤 중앙회의실을 돌파했습니다. 여섯 장의 도전을 완료했습니다.':'이번 손실도 다음 판단의 근거가 됩니다. 투자 지식은 다음 도전에 남습니다.'}</p><div class="stat-grid"><div><strong>${fmtTime(game.totalTime)}</strong><small>플레이 시간</small></div><div><strong>${game.kills}</strong><small>처치한 적</small></div><div><strong>+${e.knowledge}</strong><small>투자 지식</small></div></div><p>이번 도전 · 공격 ${game.log.export().summary.attacks}회 · 토템 발동 ${game.log.export().summary.totem_activations}회<br>이번 도전 피자스코어 +${game.pizzaEarned} · 누적 ${pizzaWallet.balance}<br>보유 투자 지식 ${progress.knowledge} · 다음 시작 체력 ${100+Math.min(20,progress.knowledge*2)}<br>이번 포트폴리오: ${game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'없음'}</p><div class="modal-actions"><button class="secondary" id="back-title">장비 변경 / 구매·강화</button><button class="primary" id="retry">다시 도전 ↗</button></div>`,'finish');$('retry').onclick=startGame;$('back-title').onclick=()=>{backToTitle();equipmentUI.open('weapon');};
+  showModal(`<span class="eyebrow">${won?'LISTING APPROVED · 상장 승인':'LIQUIDATED · 이번 도전 종료'}</span><h2 id="modal-title">${won?'Sovereign Cap → Market Legend':game.deathReason==='option_liquidation'?'옵션 3회 실패 · 강제 청산':'청산되었습니다'}</h2><p>${won?'펜타곤 중앙회의실을 돌파했습니다. 여섯 장의 도전을 완료했습니다.':'이번 손실도 다음 판단의 근거가 됩니다. 투자 지식은 다음 도전에 남습니다.'}</p><div class="stat-grid"><div><strong>${fmtTime(game.totalTime)}</strong><small>플레이 시간</small></div><div><strong>${game.kills}</strong><small>처치한 적</small></div><div><strong>+${e.knowledge}</strong><small>투자 지식</small></div></div><p>이번 도전 · 공격 ${game.log.export().summary.attacks}회 · 토템 발동 ${game.log.export().summary.totem_activations}회<br>이번 도전 피자스코어 +${game.pizzaEarned} · 누적 ${pizzaWallet.balance}<br>보유 투자 지식 ${progress.knowledge} · 다음 시작 체력 ${100+Math.min(20,progress.knowledge*2)}<br>이번 포트폴리오: ${game.build.length?game.build.map(id=>CARDS.find(c=>c.id===id).name).join(' · '):'없음'}</p><div class="modal-actions"><button class="secondary" id="back-title">장비 변경 / 구매·강화</button><button class="primary" id="retry">다시 도전 ↗</button></div>`,'finish');$('retry').onclick=startGame;$('back-title').onclick=()=>{backToTitle();equipmentUI.open('weapon');};
  }
 }
 function closeTotems(){if(modalKind!=='totems')return;const title=game.state==='title';if(!title&&game.state!=='totems')return;if(!title)game.state='playing';hideModal();stageMusic.setScene(title?'title':'playing',title?1:game.spec.chapter);if(title)$('totem-open').focus({preventScroll:true});}
@@ -213,11 +213,13 @@ function render(){
  const vignette=ctx.createRadialGradient(640,380,270,640,350,750);vignette.addColorStop(0,'#01050b00');vignette.addColorStop(1,'#01050b75');ctx.fillStyle=vignette;ctx.fillRect(0,0,1280,720);
 }
 function updateOptionHUD(){
- const panel=$('option-panel'),c=game.optionContract,r=game.optionResult,loss=game.optionLoss;
- panel.classList.toggle('hidden',game.state!=='playing'||(!c&&!r&&!loss));
- $('option-title').textContent=c?'옵션 만기':r?'옵션 결산':'능력치 손실';
- $('option-hint').textContent=c?c.hint:r?.text||'공격력의 일부가 일시적으로 사라졌습니다';
+ const panel=$('option-panel'),c=game.optionContract,r=game.optionResult,loss=game.optionLoss,boss=game.enemies.find(e=>!e.dead&&['market','executor'].includes(e.type));
+ const risk=!!boss&&(boss.optionFailures>0||boss.optionSuccesses>0);
+ panel.classList.toggle('hidden',game.state!=='playing'||(!c&&!r&&!loss&&!risk));
+ $('option-title').textContent=c?'옵션 만기':r?'옵션 결산':loss?'능력치 손실':'옵션 누적 현황';
+ $('option-hint').textContent=c?c.hint:r?.text||(loss?'공격력의 일부가 일시적으로 사라졌습니다':'성공 보너스는 이 보스 격파 시 지급됩니다');
  $('option-timer').textContent=c?`${c.phase==='choose'?'선택 마감':'만기까지'} ${c.remaining.toFixed(1)}초 · ${c.choice?(c.choice==='long'?'롱 선택':'숏 선택'):'미선택'}`:loss?`공격력 −30% · 복구까지 ${loss.remaining.toFixed(1)}초`:'';
+ $('option-risk').textContent=boss?`실패 ${boss.optionFailures||0}/3 · 3회 실패 시 즉사(청산) · 클리어 피자스코어 +${Math.round((boss.optionSuccesses||0)*20)}%`:'';
  $('option-choices').classList.toggle('hidden',!c);
  for(const side of ['long','short']){const b=$('option-'+side);b.disabled=!c||c.phase!=='choose'||game.state!=='playing';b.setAttribute('aria-pressed',String(c?.choice===side));}
 }

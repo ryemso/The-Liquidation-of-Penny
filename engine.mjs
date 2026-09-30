@@ -1,4 +1,4 @@
-import {clearOptions,chooseOption,optionDamage,updateOptions} from './options-pattern.mjs';
+import {clearOptions,chooseOption,optionDamage,optionRewardMultiplier,updateOptions} from './options-pattern.mjs';
 import {releaseCapture,updateCapture} from './upper-boss.mjs';
 import {updateMeleeBoss} from './melee-boss.mjs';
 import {skillCost,paySkill,clearPolicy,updatePentagon,updatePentagonEnemy} from './pentagon-combat.mjs';
@@ -219,7 +219,7 @@ export class Game{
  update(dt,input={}){
   dt=clamp(dt,0,1/30);this.t+=dt;
   if(this.state!=='playing')return;
-  this.totalTime+=dt;updateOptions(this,dt);updatePentagon(this,dt);this.totems.update(dt,input);this.equipmentEffects.update(dt);
+  this.totalTime+=dt;updateOptions(this,dt);if(this.state!=='playing')return;updatePentagon(this,dt);this.totems.update(dt,input);this.equipmentEffects.update(dt);
   if(this.relic?.hidden&&!this.relic.revealed&&Math.hypot(this.player.x-this.relic.x,this.player.y-this.relic.y)<180){this.relic.revealed=true;this.log.add('secret_found');this.emit('notice',{text:'숨겨진 보관함 발견',duration:2});}
   if(this.trialEnemy?.dead&&this.relic?.trialStarted&&!this.relic.trialComplete){this.relic.trialComplete=true;this.relic.waitForExit=false;this.player.gold+=25;const extra=TOTEMS.find(t=>!this.totems.owned.includes(t.id)&&!this.relic.offers.includes(t.id));if(extra)this.relic.offers.push(extra.id);this.log.add('elite_trial_clear',{offers:this.relic.offers});this.emit('notice',{text:'선택 도전 완료 · 시드 +25 · 선택지 추가 · 상자를 회수하세요',duration:3});}
 
@@ -270,7 +270,7 @@ export class Game{
  }
  awardClearCurrency(){
   if(!this.log.started||!this.rewardGiven||this.currencyRooms.has(this.room))return 0;
-  const amount=clearReward(this.spec);if(!amount)return 0;
+  const amount=Math.round(clearReward(this.spec)*optionRewardMultiplier(this));if(!amount)return 0;
   this.currencyRooms.add(this.room);this.pizzaEarned+=amount;this.lastClearPizza=amount;
   const receipt=`${this.log.runId}:${this.room}`;
   this.log.add('currency_earned',{currency:'pizza_score',amount,reason:'stage_clear',receipt,run_total:this.pizzaEarned});

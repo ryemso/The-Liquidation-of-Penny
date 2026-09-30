@@ -29,3 +29,14 @@ test('pattern waits for executor transformation and living sniper squad; early b
  const {g:h,e}=setup(28);h.optionContract=null;e.state='idle';e.optionClock=0;const m=h.makeEnemy('rifle',100,620);m.sniper=true;m.skillActive=true;m.skillState='reload';m.timer=10;h.enemies.push(m);h.update(1/120);assert.ok(!h.optionContract);
  for(const room of [4,9,14,19]){g.setRoom(room);g.enemies[0].optionClock=0;g.update(1/120);assert.ok(!g.optionContract);}
 });
+function nextContract(g,e){e.stagger=0;e.optionClock=0;e.state='idle';e.timer=0;g.hitstop=0;g.update(1/120);assert.ok(g.optionContract);}
+test('third cumulative failure liquidates through invulnerability; success does not erase failures',()=>{
+ const {g,e}=setup();g.action('option_short');step(g,4.05);assert.equal(e.optionFailures,1);
+ nextContract(g,e);g.action('option_long');step(g,4.05);assert.equal(e.optionFailures,1);assert.equal(e.optionSuccesses,1);
+ nextContract(g,e);step(g,4.05);assert.equal(e.optionFailures,2);assert.equal(g.state,'playing');
+ nextContract(g,e);g.action('option_short');step(g,4.05);assert.equal(g.state,'dead');assert.equal(g.player.hp,0);assert.equal(g.pizzaEarned,0);assert.ok(g.log.events.some(e=>e.event==='option_liquidated'));assert.equal(g.optionContract,null);
+});
+test('success bonus pays only at boss clear, once, and does not carry to next boss',()=>{
+ for(const room of [24,28]){const {g,e}=setup(room);for(let i=0;i<2;i++){if(i)nextContract(g,e);g.action('option_long');step(g,4.05);}assert.equal(g.pizzaEarned,0);g.hitEnemy(e,999999,0,false,true);step(g,1.2);assert.equal(g.lastClearPizza,room===24?350:420);const earned=g.pizzaEarned;step(g,2);assert.equal(g.pizzaEarned,earned);g.setRoom(room);assert.ok(!g.enemies[0].optionSuccesses);assert.ok(!g.enemies[0].optionFailures);}
+});
+test('death before boss clear forfeits accumulated option bonus',()=>{const {g}=setup();g.action('option_long');step(g,4.05);g.finish(false);assert.equal(g.pizzaEarned,0);});
